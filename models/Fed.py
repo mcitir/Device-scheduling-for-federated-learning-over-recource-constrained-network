@@ -38,12 +38,11 @@ def simpleL2(w, w_global):
 
     ratio = 0.2 # The ratio of updates used
     updatesReduction = len(w) - round(len(w)*ratio)
-    w_avg = copy.deepcopy(w[0])
     w_g = copy.deepcopy(w_global)
     l2 = np.zeros(len(w))
     # Loop users
     for i in range(0, len(w)):
-        for k in w_avg.keys():
+        for k in w_g.keys():
             # The difference between local and global is the interesting part
             l2[i] += torch.norm(w[i][k] - w_g[k])
     sorted = np.argsort(l2)[updatesReduction:]
@@ -58,3 +57,5 @@ def simpleL2(w, w_global):
         w_avg[k] = torch.div(w_avg[k], len(sorted))
     return w_avg
         
+def multiLayerL2(w, w_global):
+    pass
