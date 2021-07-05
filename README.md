@@ -1,6 +1,8 @@
-## Based on:
+## Based on
 Shaoxiong Ji. (2018, March 30). A PyTorch Implementation of Federated Learning. Zenodo. http://doi.org/10.5281/zenodo.4321561
 
+## About
+This is part of a master thesis. The aim of the thesis is to explore potentiall roles of device scheduling in federated learning.
 
 ## Requirements
 python>=3.6  

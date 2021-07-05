@@ -16,6 +16,7 @@ from models.Update import LocalUpdate
 from models.Nets import MLP, CNNMnist, CNNCifar
 from models.Fed import FedAvg
 from models.test import test_img
+from utils.scheduling import userSelection
 
 
 if __name__ == '__main__':
@@ -78,8 +79,12 @@ if __name__ == '__main__':
         loss_locals = []
         if not args.all_clients:
             w_locals = []
-        m = max(int(args.frac * args.num_users), 1)
-        idxs_users = np.random.choice(range(args.num_users), m, replace=False)
+
+        ### 
+        m = max(int(args.frac * args.num_users), 1) # Numer of users
+        #idxs_users = np.random.choice(range(args.num_users), m, replace=False) # Select at random
+        idxs_users = userSelection(m, dict_users, dataset_train)
+
         for idx in idxs_users:
             local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users[idx])
             w, loss = local.train(net=copy.deepcopy(net_glob).to(args.device))
