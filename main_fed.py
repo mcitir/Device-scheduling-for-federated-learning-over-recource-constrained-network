@@ -72,6 +72,9 @@ if __name__ == '__main__':
     best_loss = None
     val_acc_list, net_list = [], []
 
+    # scheduling
+    selectedUsers = np.zeros(args.num_users)
+
     if args.all_clients: 
         print("Aggregation over all clients")
         w_locals = [w_glob for i in range(args.num_users)]
@@ -80,10 +83,19 @@ if __name__ == '__main__':
         if not args.all_clients:
             w_locals = []
 
-        ### 
+        
         m = max(int(args.frac * args.num_users), 1) # Numer of users
         #idxs_users = np.random.choice(range(args.num_users), m, replace=False) # Select at random
-        idxs_users = userSelection(m, dict_users, dataset_train)
+        
+
+        #################################
+        # Egen kod
+        #idxs_users = np.random.choice(range(args.num_users), m, replace=False) # Select at random
+        idxs_users = userSelection(m, dict_users, dataset_train, selectedUsers, True)
+
+
+
+        selectedUsers[idxs_users] += 1
 
         for idx in idxs_users:
             local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users[idx])
@@ -118,3 +130,6 @@ if __name__ == '__main__':
     print("Training accuracy: {:.2f}".format(acc_train))
     print("Testing accuracy: {:.2f}".format(acc_test))
 
+    # Eget
+    #print("Number of times user n was selected during training: {:.0f}".format(selectedUsers))
+    #print("Variance of user selection: {:.2f}".format(np.var(selectedUsers)))
