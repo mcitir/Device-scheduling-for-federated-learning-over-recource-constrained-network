@@ -54,5 +54,6 @@ def largeScaleCoefficents(nbr_users):
     kb = 1.38*10**(-23)
     T = 300 # Kelvin
     n0 = kb*T
-    # @TODO 
+    # @TODO generate betas as a function of distances 
+    # With resonable constants
     
