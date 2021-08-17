@@ -14,7 +14,7 @@ def channel_capacity(num_users, std_noise, power, B, beta):
     beta: variance of channel gain
 
     """
-    # Channel gain, based on religh fading, rich multipath
+    # Channel gain, based on relight fading, rich multipath
 
     # g = CN(0, beta)
     g = ((standard_normal(num_users) + 1j * standard_normal(num_users)) * 
@@ -22,7 +22,8 @@ def channel_capacity(num_users, std_noise, power, B, beta):
 
     # capacity = log2(1+|g|^2 SNR)
     # SNR = q/N0
-    cg = log2( (1 + abs(g)**2 * power/std_noise ))
+    # std_noise^2 = No/2 
+    cg = log2( (1 + abs(g)**2 * power/(std_noise^2)))
 
     return cg
 
