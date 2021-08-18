@@ -1,32 +1,46 @@
-from numpy import log2, sqrt, zeros, transpose
+from numpy import log2, log10, sqrt, zeros, transpose
 from numpy.random import randn, random, standard_normal, uniform
 
-def channel_capacity(num_users, noise_power, power, B):
+def channel_capacity(nbr_users, B):
     """
-    num_users: number of users
-
-    std_noise: standard deviation of addetive noise
-
-    power: Power of transmitted signal
+    nbr_users: number of users
 
     B: Bandwidth
 
-    beta: large scale fading coefficent
-
+    returns cg: randomly generates [bits/s/Hz] for 'nbr_users' based on 
+    a physical model within a cell. 
     """
-    # Channel gain, based on relight fading, rich multipath
-    beta = 1
-    # h = CN(0, 1), a.k.a relight fading
-    h = (standard_normal(num_users) + 1j * standard_normal(num_users)) * 1 * 0.5
-    g = sqrt(beta)*h
-    # capacity = log2(1+|g|^2 SNR)
-    # SNR = q/N0
-    # std_noise^2 = No/2 
-    cg = log2(1 + (abs(g)**2 * power/(noise_power)))
+    ###########################################################################
+    ##### Noise power and antenna gain, based on lab2 TSKS14 ##################
+    kb = 1.38*10**(-23)
+    T = 300 # Kelvin
+    n0 = kb*T
+    n0_dBm = 10*log10(n0*B/(10**(-3))); 
 
+    uplinkRadPower = 20                                             # dBm
+    antennaGain = 3                                                 # dBi
+    baseGain = 3                                                    # dbi
+    noiseFigure = 10                                                # db
+    effektNoise = (n0_dBm + noiseFigure)                            # dBm
+    pul_db = uplinkRadPower + antennaGain + baseGain - effektNoise  # dB
+    pul = 10**(pul_db/10)   # ca 140 dB total uplink gain
+
+    ############################################################################
+    ### Channel gain, beta based on TSKS lab 2, and h based on relight fading ##
+    h = (standard_normal(nbr_users) + 1j * standard_normal(nbr_users)) * 1 * 0.5
+    beta = largeScaleCoefficents(nbr_users)
+    g = sqrt(beta)*h
+    
+    ############################################################################
+    ### Capacity [bits/s/Hz] ###################################################
+    cg = log2(1 + (abs(g)**2 * pul))
     return cg
 
 def hexagon(nbr_users, size=500):
+    """
+    Randomly generate 'nbr_users' points wihin a hexagon, where the maximum 
+    distance from the center of the hexagon is 'size'. 
+    """
     x = zeros((2, nbr_users))
     for i in range(nbr_users):
         r = uniform(0,1)
@@ -46,14 +60,24 @@ def hexagon(nbr_users, size=500):
     return x
 
 def distances(nbr_users, size=500, height=35):
+    """
+    Help function to calculate the distance from the user to the BS.
+    It also assumes that the antenna is located 35m above the users. 
+    This is more realistic, but also makes the beta modell more robust
+    since it breaks down for small distances. 
+    """
     user_pos = hexagon(nbr_users)
     lengths = sqrt(user_pos[0,:]**2 +  user_pos[1,:]**2 )
     return sqrt(height**2 + lengths**2)
 
 def largeScaleCoefficents(nbr_users):
-    kb = 1.38*10**(-23)
-    T = 300 # Kelvin
-    n0 = kb*T
-    # @TODO generate betas as a function of distances 
-    # With resonable constants
+    """
+    This function randomly generates 'nbr_users' large scale fading coefficents
+
+    Based on TSKS14 lab 2. 
+    The PM said that β[dB] =−17−37.6 log10(d) is a simple way
+    to modell the channle variance.
+    """
+    beta_dB = -17 -37.6*log10(distances(nbr_users)) # [dB]
+    return 10**(beta_dB/10)
     

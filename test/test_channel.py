@@ -7,22 +7,20 @@ import channel
 import matplotlib.pyplot as plt
 
 num_users = 100
-noise_power = 0.01
-power = 1
 B = 10**5
-cg = channel.channel_capacity(num_users, noise_power, power, B)
+cg = channel.channel_capacity(num_users, B)
 
 
 print("Testing")
 
-x = channel.hexagon(num_users)
+#x = channel.hexagon(1000*num_users)
 #print(x)
 #plt.scatter(x[0], x[1])
 #plt.show()
 
-y = channel.distances(1000*num_users)
-print(y)
-plt.hist(y, bins=200)
-plt.show()
+#y = channel.distances(1000*num_users)
+#print(y)
+#plt.hist(y, bins=200)
+#plt.show()
 
-# print(cg)
+print(cg)
