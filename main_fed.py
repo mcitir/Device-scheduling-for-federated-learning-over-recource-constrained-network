@@ -19,6 +19,9 @@ from models.test import test_img
 from utils.scheduling import userSelection
 
 
+
+##################################################
+######## SETUP ###################################
 if __name__ == '__main__':
     # parse args
     args = args_parser()
@@ -78,18 +81,23 @@ if __name__ == '__main__':
     if args.all_clients: 
         print("Aggregation over all clients")
         w_locals = [w_glob for i in range(args.num_users)]
+
+
+    
+
+
+    ##################################################
+    ##### MAIN LOOP ##################################
     for iter in range(args.epochs):
         loss_locals = []
         if not args.all_clients:
             w_locals = []
 
         
+        ##################################################
+        ##### UPLINk SCHEDULING ##########################
         m = max(int(args.frac * args.num_users), 1) # Numer of users
-        #idxs_users = np.random.choice(range(args.num_users), m, replace=False) # Select at random
-        
 
-        #################################
-        # Egen kod
         #idxs_users = np.random.choice(range(args.num_users), m, replace=False) # Select at random
         idxs_users = userSelection(m, dict_users, dataset_train, selectedUsers, True)
 

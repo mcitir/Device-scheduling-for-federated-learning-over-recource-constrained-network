@@ -1,6 +1,30 @@
 from numpy import log2, log10, sqrt, zeros, transpose
 from numpy.random import randn, random, standard_normal, uniform
 
+
+##################################################################
+### Coherence, for now only pedestrians indoors! #################
+### BASED ON "FUNDEMENTALS OF MASSIVE MIMO" chapter 2 ############
+
+def coherenceInterval():            # Also known as coherence block
+    tc = coherenceTime()
+    bc = coherenceBandwidth()
+    return tc*bc
+
+def coherenceTime():
+    fc = 2 * 10**9                  # Close to the avarage for 4G
+    v = 1.5                         # avarage velocity [m/s] of users
+    tc = (3 * 10**8 / fc) / (2 * v) # Coherence time
+    return tc
+
+def coherenceBandwidth():
+    d1_d2 = 30                      # Distance from user to wall
+    bc = 3 * 10**8 / d1_d2
+    return bc
+
+
+##################################################################
+### CHANNEL MODELL ###############################################
 def channel_capacity(nbr_users, B):
     """
     nbr_users: number of users

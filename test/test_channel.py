@@ -23,4 +23,16 @@ print("Testing")
 #plt.hist(y, bins=200)
 #plt.show()
 
-print(cg)
+#print(cg)
+#plt.hist(cg, bins=200)
+#plt.xlabel("bits/s/Hz")
+#plt.ylabel("Number Of Users")
+#plt.title("Distrobution of Rate for users")
+#plt.show()
+
+#print(channel.largeScaleCoefficents(num_users))
+
+
+print(channel.coherenceBandwidth(  ))
+print(channel.coherenceTime())
+print(channel.coherenceInterval())
