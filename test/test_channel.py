@@ -13,20 +13,20 @@ cg = channel.channel_capacity(num_users, B)
 
 print("Testing")
 
-#x = channel.hexagon(1000*num_users)
-#print(x)
+x = channel.hexagon(num_users)
+print(x)
 #plt.scatter(x[0], x[1])
 #plt.show()
 
-#y = channel.distances(1000*num_users)
-#print(y)
+y = channel.distances(1000*num_users)
+print(y)
 #plt.hist(y, bins=200)
 #plt.show()
 
 #print(cg)
-#plt.hist(cg, bins=200)
-#plt.xlabel("bits/s/Hz")
-#plt.ylabel("Number Of Users")
+plt.hist(cg, bins=200)
+plt.xlabel("bits/s/Hz")
+plt.ylabel("Number Of Users")
 #plt.title("Distrobution of Rate for users")
 #plt.show()
 
