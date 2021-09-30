@@ -16,7 +16,7 @@ from models.Update import LocalUpdate
 from models.Nets import MLP, CNNMnist, CNNCifar
 from models.Fed import FedAvg
 from models.test import test_img
-from utils.scheduling import userSelection
+from utils.scheduling import compressRatio, userSelection, Scheduler
 
 
 
@@ -77,13 +77,11 @@ if __name__ == '__main__':
 
     # scheduling
     selectedUsers = np.zeros(args.num_users)
+    scheduler = Scheduler(args.num_users)
 
     if args.all_clients: 
         print("Aggregation over all clients")
-        w_locals = [w_glob for i in range(args.num_users)]
-
-
-    
+        w_locals = [w_glob for i in range(args.num_users)]    
 
 
     ##################################################
@@ -99,8 +97,10 @@ if __name__ == '__main__':
         m = max(int(args.frac * args.num_users), 1) # Numer of users
 
         #idxs_users = np.random.choice(range(args.num_users), m, replace=False) # Select at random
-        idxs_users = userSelection(m, dict_users, dataset_train, selectedUsers, True)
-
+        #idxs_users = userSelection(m, dict_users, dataset_train, selectedUsers, True)
+        idxs_users, compress_ratio = scheduler.newUsers(m)
+        print("idxs_users: " + str(idxs_users))
+        print("compress_ratio: " + str(compress_ratio))
 
 
         selectedUsers[idxs_users] += 1
@@ -115,7 +115,7 @@ if __name__ == '__main__':
             loss_locals.append(copy.deepcopy(loss))
         # update global weights
         # added w_global to parameters
-        w_glob = FedAvg(w_locals, w_glob)
+        w_glob = FedAvg(w_locals, w_glob, compress_ratio, 'random')
 
         # copy weight to net_glob
         net_glob.load_state_dict(w_glob)

@@ -39,7 +39,8 @@ def channel_capacity(nbr_users, B):
     kb = 1.38*10**(-23)
     T = 300 # Kelvin
     n0 = kb*T
-    n0_dBm = 10*log10(n0*B/(10**(-3))); 
+    n0_dBm = 10*log10(n0*B/(10**(-3)));                             #-143
+    print("No: " + str(n0_dBm))
 
     uplinkRadPower = 20                                             # dBm
     antennaGain = 3                                                 # dBi

@@ -6,30 +6,42 @@ import copy
 import torch
 from torch import nn
 import numpy as np
+import torch.nn.functional as F
 
-def FedAvg(w, w_global, scheduling='None'):
+def FedAvg(w, w_global, ratio=1, compression='None'):
 
     # w is list of objects. Every object contains two enteries
     # w[.] = [net.state_dict, sum(epoch_loss) / len(epoch_loss)]
     # copy.deepcopy(w[0]) = collections.OrderedDict
 
     ## Select scheduling scheme
-    if scheduling == 'None':
-        w_avg = noScheduling(w)
-    elif scheduling == 'L2':
-        w_avg = simpleL2(w, w_global)
-    elif scheduling == 'ML2':
+    if compression == 'None':
+        w_avg = noCompression(w)
+    elif compression == 'random':
+        w_avg = randomCompression(w, w_global, ratio)
+    elif compression == 'ML2':
         multiLayerL2(w, w_global)
     else:
-        print("No scheduling selected")
-        w_avg = noScheduling(w)
+        print("No Compression")
+        w_avg = noCompression(w)
     return w_avg
 
-def noScheduling(w):
+def noCompression(w):
     w_avg = copy.deepcopy(w[0])
     for k in w_avg.keys():
         for i in range(1, len(w)):
             w_avg[k] += w[i][k]
+        w_avg[k] = torch.div(w_avg[k], len(w))
+    return w_avg
+
+def randomCompression(w, w_global, ratio):
+    ## Set random values to w_gloabal
+    w_avg = copy.deepcopy(w[0])
+    for k in w_avg.keys():
+        for i in range(1, len(w)):
+            w_diff = w[i][k] - w_global[k]
+            w_diff_dropout = F.dropout(w_diff, p=ratio[i])
+            w_avg[k] += w_diff_dropout + w_global[k]
         w_avg[k] = torch.div(w_avg[k], len(w))
     return w_avg
 
@@ -39,6 +51,8 @@ def noScheduling(w):
 
 
 
+
+#### OLD
 
 def simpleL2(w, w_global):
     # Very simple and naive scheduling. This scheduling calculates the
