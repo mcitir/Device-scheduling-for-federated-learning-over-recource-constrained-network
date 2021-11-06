@@ -5,8 +5,7 @@ mymodule_dir = os.path.join( script_dir, '..', 'utils')
 sys.path.append( mymodule_dir)
 net_dir = os.path.join( script_dir, '..', 'models')
 sys.path.append( net_dir)
-from rate import Rates
-from scheduling import Scheduler
+from scheduling import Scheduler, Rates
 from Nets import CNNMnist
 from options import args_parser
 
@@ -16,8 +15,9 @@ import torch
 from numpy import average
 
 scheduler = Scheduler(100, 10)
-picked = scheduler.pick()
-print(picked)
+
+rates = Rates(100)
+print(rates.getBitsPerBlock())
 
 
 

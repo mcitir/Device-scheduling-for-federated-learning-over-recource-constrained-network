@@ -27,6 +27,11 @@ def args_parser():
     parser.add_argument('--max_pool', type=str, default='True',
                         help="Whether use max pooling rather than strided convolutions")
 
+    # Egna modell arguments
+    parser.add_argument('--snr', type=int, default=20, help='SNR for channel modell')
+    parser.add_argument('--comp', type=str, default='None', help='Compression type. None is no compression, regardless of channel capacity')
+    parser.add_argument('--sched', type=str, default='random', help='Scheduling type')
+
     # other arguments
     parser.add_argument('--dataset', type=str, default='mnist', help="name of dataset")
     parser.add_argument('--iid', action='store_true', help='whether i.i.d or not')

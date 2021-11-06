@@ -1,22 +1,32 @@
 import numpy as np
 from numpy.random import standard_normal
-from numpy import abs, log2
+from numpy import abs, log2, zeros
 
-### NEW 
+### Scheduler Class
 class Scheduler:
-    def __init__(self, m, SNR=30, mode='capacity'):
+    def __init__(self, m, SNR=30, mode='old', comp='None'):
         self.rates = Rates(m, SNR)
         self.mode = mode
+        self.picks = zeros(m)
+        self.sinceLastPick = zeros(m)
+        self.comp = comp
 
     def newUsers(self, k):
         self.rates.update()
-        users = pick(self.rates, k, self.mode)
+        users = pick(self.rates, k, self.sinceLastPick, self.mode)
+        self.picks[users] += 1
+        self.sinceLastPick += 1
+        self.sinceLastPick[users] = 0
         ratio = compressRatio(self.rates, users)
         return users, ratio
 
-def pick(rates, k, mode):
-        if mode == 'capacity':
-            return capacityScheduling(rates, k)
+def pick(rates, k, sinceLastPick, mode):
+    if mode == 'random':
+        return np.random.choice(range(rates.nbr_users,), k, replace=False)
+    elif mode == 'capacity':
+        return capacityScheduling(rates, k)
+    elif mode == 'old':
+        return oldUsers(rates, sinceLastPick, k)
 
 def capacityScheduling(rates, k):
     ## Return the k users with the highest capacity
@@ -24,9 +34,19 @@ def capacityScheduling(rates, k):
     sorted = np.argsort(capacity)
     return np.flip(sorted)[0:k]
 
-def compressRatio(rates, choosen, net_size=100, bit_depth=33):
-    dataPerUser = evenDistrobution(rates, len(choosen))[choosen]
+def oldUsers(rates, sinceLastPick, k):
+    sortedIndex = np.argsort(sinceLastPick)
+    return np.flip(sortedIndex)[0:k]
+
+def compressRatio(rates, choosen, bit_depth=33, mode='singleUser'):
+    net_size=10000 # temp
+    #net_size = rates.network_size
+    if mode== 'ofdm':
+        dataPerUser = evenDistrobution(rates, len(choosen))[choosen]
+    elif mode== 'singleUser':
+        dataPerUser = rates.bitsPerBlock[choosen]
     compresPerUser = dataPerUser / (net_size * bit_depth)
+    compresPerUser[compresPerUser > 1] = 1
     return (1 - compresPerUser)
 
 def evenDistrobution(rates, users_choosen = 10):
@@ -39,22 +59,23 @@ def evenDistrobution(rates, users_choosen = 10):
     return dataPerUser
 
 class Rates:
-    def __init__(self, nbr_users, SNR=20):
+    def __init__(self, nbr_users, SNR=30):
         ## OFDM Constants
-        Ts = (1.0/14) * 10**(-3)
+        self.Ts = (1.0/14) * 10**(-3)
         Tu = (1.0/15) * 10**(-3)
         Tcp = (1.0/(14*15)) * 10**(-3)
         Bs = 15*10**3
-        Bc = 210*10**3
+        self.Bc = 210*10**3
         N_smooth = 14
         T_slot = 2*10**(-3)
         N_slot = 28
+        self.coherenceTime = self.Ts * N_slot
 
         ## Usefull stuff
-        self.network_size=10         #self.network_size=10**3
+        self.network_size=10**3         #self.network_size=10**3
         self.nbr_users = nbr_users
         self.samples = N_smooth*N_slot
-        self.sampleSize = Ts * Bs # Maybe Tu?
+        self.sampleSize = self.Ts * Bs # Maybe Tu?
 
         ## Channel
         self.SNR = SNR
@@ -65,17 +86,15 @@ class Rates:
         Only change small scale fading, then update values. 
         """
         h = (standard_normal(self.nbr_users) + 1j * standard_normal(self.nbr_users)) * 1 * 0.5
-        capacity = log2(1+pow(abs(h),2) * pow(self.SNR/10, 10))
-        self.bitsPerSymbol = capacity*self.sampleSize  
+        self.capacity = log2(1+pow(abs(h),2) * pow(self.SNR/10, 10))
+        self.bitsPerSymbol = self.capacity*self.sampleSize  
+        self.bitsPerBlock = self.capacity * self.Bc * self.coherenceTime
 
+    def getBitsPerBlock(self):
+        return self.bitsPerBlock
 
-    
-
-
-
-
-
-
+    def getCapacity(self):
+        return self.capacity
 
 def search(distrobution, m, iterations, selectedUsers):
     """

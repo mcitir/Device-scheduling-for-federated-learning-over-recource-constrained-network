@@ -77,7 +77,7 @@ if __name__ == '__main__':
 
     # scheduling
     selectedUsers = np.zeros(args.num_users)
-    scheduler = Scheduler(args.num_users)
+    scheduler = Scheduler(args.num_users, args.snr, args.sched, args.comp)
 
     if args.all_clients: 
         print("Aggregation over all clients")
@@ -94,11 +94,11 @@ if __name__ == '__main__':
         
         ##################################################
         ##### UPLINk SCHEDULING ##########################
-        m = max(int(args.frac * args.num_users), 1) # Numer of users
+        k = max(int(args.frac * args.num_users), 1) # Numer of users
 
         #idxs_users = np.random.choice(range(args.num_users), m, replace=False) # Select at random
         #idxs_users = userSelection(m, dict_users, dataset_train, selectedUsers, True)
-        idxs_users, compress_ratio = scheduler.newUsers(m)
+        idxs_users, compress_ratio = scheduler.newUsers(k)
         print("idxs_users: " + str(idxs_users))
         print("compress_ratio: " + str(compress_ratio))
 
@@ -115,7 +115,7 @@ if __name__ == '__main__':
             loss_locals.append(copy.deepcopy(loss))
         # update global weights
         # added w_global to parameters
-        w_glob = FedAvg(w_locals, w_glob, compress_ratio, 'random')
+        w_glob = FedAvg(w_locals, w_glob, compress_ratio, args.comp)
 
         # copy weight to net_glob
         net_glob.load_state_dict(w_glob)
@@ -130,6 +130,9 @@ if __name__ == '__main__':
     plt.plot(range(len(loss_train)), loss_train)
     plt.ylabel('train_loss')
     plt.savefig('./save/fed_{}_{}_{}_C{}_iid{}.png'.format(args.dataset, args.model, args.epochs, args.frac, args.iid))
+
+    # save result
+    np.save('./save/fed_{}_{}_{}_C{}_iid{}.npy'.format(args.dataset, args.model, args.epochs, args.frac, args.iid), loss_train)
 
     # testing
     net_glob.eval()
