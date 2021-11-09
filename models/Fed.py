@@ -9,18 +9,18 @@ import numpy as np
 import torch.nn.functional as F
 # import tensorflow as tf
 
-def FedAvg(w, w_global, ratio=1, compression='stochasticQuantization'):
+def FedAvg(w, w_global, ratio=1, compression='Quant'):
 
     # w is list of objects. Every object contains two enteries
     # w[.] = [net.state_dict, sum(epoch_loss) / len(epoch_loss)]
     # copy.deepcopy(w[0]) = collections.OrderedDict
 
-    ## Select scheduling scheme
+    ## Select Compression scheme
     if compression == 'None':
         w_avg = noCompression(w)
-    elif compression == 'randomSparcification':
+    elif compression == 'Spar':
         w_avg = randomSparcification(w, w_global, ratio)
-    elif compression == 'stochasticQuantization':
+    elif compression == 'Quant':
         w_avg = stochasticQuantization(w, ratio)
     elif compression == 'ML2':
         multiLayerL2(w, w_global)

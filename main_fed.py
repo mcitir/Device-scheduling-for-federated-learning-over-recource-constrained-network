@@ -16,7 +16,7 @@ from models.Update import LocalUpdate
 from models.Nets import MLP, CNNMnist, CNNCifar
 from models.Fed import FedAvg
 from models.test import test_img
-from utils.scheduling import compressRatio, userSelection, Scheduler
+from utils.scheduling import compressRatio, Scheduler
 
 
 
@@ -69,6 +69,7 @@ if __name__ == '__main__':
 
     # training
     loss_train = []
+    acc = []
     cv_loss, cv_acc = [], []
     val_loss_pre, counter = 0, 0
     net_best = None
@@ -77,7 +78,7 @@ if __name__ == '__main__':
 
     # scheduling
     selectedUsers = np.zeros(args.num_users)
-    scheduler = Scheduler(args.num_users, args.snr, args.sched, args.comp)
+    scheduler = Scheduler(args.num_users, dict_users, dataset_train, args.snr, args.sched, args.comp)
 
     if args.all_clients: 
         print("Aggregation over all clients")
@@ -125,15 +126,19 @@ if __name__ == '__main__':
         print('Round {:3d}, Average loss {:.3f}'.format(iter, loss_avg))
         loss_train.append(loss_avg)
 
+        # Added accurency convergence
+        acc_avg, _ = test_img(net_glob, dataset_test, args)
+        acc.append(acc_avg)
+
     # plot loss curve
     plt.figure()
     plt.plot(range(len(loss_train)), loss_train)
     plt.ylabel('train_loss')
-    plt.savefig('./save/fed_{}_{}_{}_C{}_iid{}.png'.format(args.dataset, args.model, args.epochs, args.frac, args.iid))
+    plt.savefig('./save/fed_{}_{}_{}_C{}_iid{}_snr{}_comp{}_scheduling{}.png'.format(args.dataset, args.model, args.epochs, args.frac, args.iid, args.snr, args.comp, args.sched))
 
     # save result
-    np.save('./save/fed_{}_{}_{}_C{}_iid{}.npy'.format(args.dataset, args.model, args.epochs, args.frac, args.iid), loss_train)
-
+    np.save('./save/loss_fed_{}_{}_{}_C{}_iid{}_snr{}_comp{}_scheduling{}.npy'.format(args.dataset, args.model, args.epochs, args.frac, args.iid, args.snr, args.comp, args.sched), loss_train)
+    np.save('./save/acc_fed_{}_{}_{}_C{}_iid{}_snr{}_comp{}_scheduling{}.npy'.format(args.dataset, args.model, args.epochs, args.frac, args.iid, args.snr, args.comp, args.sched), acc)
     # testing
     net_glob.eval()
     acc_train, loss_train = test_img(net_glob, dataset_train, args)

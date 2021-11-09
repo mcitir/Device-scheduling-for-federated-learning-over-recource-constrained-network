@@ -14,12 +14,14 @@ import torch.optim as optim
 import torch
 from numpy import average
 
-scheduler = Scheduler(100, 10)
+scheduler = Scheduler(100)
 
-rates = Rates(100)
-print(rates.getBitsPerBlock())
+# rates = Rates(100)
+# print(rates.getBitsPerBlock())
 
-
+idxs_users, compress_ratio = scheduler.newUsers(10)
+print(compress_ratio)
+print(scheduler.rates.getBitsPerBlock())
 
 
 

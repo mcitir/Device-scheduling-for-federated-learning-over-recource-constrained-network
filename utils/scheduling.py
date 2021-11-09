@@ -4,27 +4,31 @@ from numpy import abs, log2, zeros
 
 ### Scheduler Class
 class Scheduler:
-    def __init__(self, m, SNR=30, mode='old', comp='None'):
+    def __init__(self, m, dict_users, dataset_train, SNR, mode='old', comp='None'):
         self.rates = Rates(m, SNR)
         self.mode = mode
         self.picks = zeros(m)
         self.sinceLastPick = zeros(m)
         self.comp = comp
+        self.dict_users = dict_users
+        self.dataset_train = dataset_train
 
     def newUsers(self, k):
         self.rates.update()
-        users = pick(self.rates, k, self.sinceLastPick, self.mode)
+        users = pick(self.rates, k, self.sinceLastPick, self.mode, self.dict_users, self.dataset_train)
         self.picks[users] += 1
         self.sinceLastPick += 1
         self.sinceLastPick[users] = 0
         ratio = compressRatio(self.rates, users)
         return users, ratio
 
-def pick(rates, k, sinceLastPick, mode):
+def pick(rates, k, sinceLastPick, mode, dict, dataset):
     if mode == 'random':
         return np.random.choice(range(rates.nbr_users,), k, replace=False)
     elif mode == 'capacity':
         return capacityScheduling(rates, k)
+    elif mode == 'g1':
+        return g1(rates, dict, dataset, k)
     elif mode == 'old':
         return oldUsers(rates, sinceLastPick, k)
 
@@ -38,25 +42,14 @@ def oldUsers(rates, sinceLastPick, k):
     sortedIndex = np.argsort(sinceLastPick)
     return np.flip(sortedIndex)[0:k]
 
-def compressRatio(rates, choosen, bit_depth=33, mode='singleUser'):
-    net_size=10000 # temp
+def compressRatio(rates, choosen, bit_depth=33):
+    net_size=1000 # temp
     #net_size = rates.network_size
-    if mode== 'ofdm':
-        dataPerUser = evenDistrobution(rates, len(choosen))[choosen]
-    elif mode== 'singleUser':
-        dataPerUser = rates.bitsPerBlock[choosen]
+
+    dataPerUser = rates.bitsPerBlock[choosen]
     compresPerUser = dataPerUser / (net_size * bit_depth)
     compresPerUser[compresPerUser > 1] = 1
     return (1 - compresPerUser)
-
-def evenDistrobution(rates, users_choosen = 10):
-    """
-    Every user gets the same amount of symbols
-    """
-    ### We need scheduling here? 
-    samplesPerUser = round(rates.samples / users_choosen)
-    dataPerUser = rates.bitsPerSymbol* samplesPerUser
-    return dataPerUser
 
 class Rates:
     def __init__(self, nbr_users, SNR=30):
@@ -96,7 +89,7 @@ class Rates:
     def getCapacity(self):
         return self.capacity
 
-def search(distrobution, m, iterations, selectedUsers):
+def search(rates, distrobution, m, iterations):
     """
     Given the distrobution matrix, this function searches for a 
     linear combination of m colums that are as evenly distubuted 
@@ -117,7 +110,8 @@ def search(distrobution, m, iterations, selectedUsers):
     bucket_min = np.zeros(distrobution.shape[0])
 
     # Increase the probability to pick users selected more seldome
-    prob = ((max(selectedUsers) - selectedUsers)**2 + 1)/sum((max(selectedUsers) - selectedUsers)**2 + 1)
+    # prob = ((max(selectedUsers) - selectedUsers)**2 + 1)/sum((max(selectedUsers) - selectedUsers)**2 + 1)
+    prob = np.ones(rates.nbr_users)/rates.nbr_users
     for i in range(iterations):
         bucket = np.random.choice(range(distrobution.shape[0]), m, replace=False, p=prob)
         temp = sum(distrobution[bucket][:])
@@ -129,7 +123,7 @@ def search(distrobution, m, iterations, selectedUsers):
     return bucket_min
     
         #print(bucket)
-def userSelection(m, dict, dataset, selectedUsers, scheduling=True):
+def g1(rates, dict, dataset, k):
     """
     This function calculates the distribution of classes
     in the local data for every user. From this result the 
@@ -149,7 +143,7 @@ def userSelection(m, dict, dataset, selectedUsers, scheduling=True):
             dist[user][labels[feature]] += 1
     dist = dist/len(dict[0])
     
-    return search(dist, m, 1000, selectedUsers)
+    return search(rates, dist, k, 1000)
         
 
 
