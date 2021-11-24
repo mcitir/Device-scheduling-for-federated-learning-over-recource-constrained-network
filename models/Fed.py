@@ -9,21 +9,24 @@ import numpy as np
 import torch.nn.functional as F
 # import tensorflow as tf
 
-def FedAvg(w, w_global, ratio=1, compression='Quant'):
+def FedAvg(w, w_global, ratio=1, k=10, compression='Spar', scheduling='random', blocks=1):
 
     # w is list of objects. Every object contains two enteries
     # w[.] = [net.state_dict, sum(epoch_loss) / len(epoch_loss)]
     # copy.deepcopy(w[0]) = collections.OrderedDict
 
+    if scheduling == "BN2":
+        return bn2(w, w_global, k, ratio)
+
     ## Select Compression scheme
     if compression == 'None':
-        w_avg = noCompression(w)
+        return noCompression(w)
     elif compression == 'Spar':
-        w_avg = randomSparcification(w, w_global, ratio)
+        return randomSparcification(w, w_global, ratio/blocks)
     elif compression == 'Quant':
-        w_avg = stochasticQuantization(w, ratio)
+        return stochasticQuantization(w, ratio)
     elif compression == 'ML2':
-        multiLayerL2(w, w_global)
+        pass
     else:
         print("No Compression")
         w_avg = noCompression(w)
@@ -76,43 +79,23 @@ def stochasticQuantization(w, ratio, defualt_bit_depth=32):
         w_avg[k] = torch.div(w_avg[k], len(w))
     return w_avg
 
-def largeMeanOneSided(w, w_global, ratio, defualt_bit_depth=32):
-    w_diff = copy.deepcopy(w)
+
+def bn2(w, w_global, k_value, ratio):
     w_avg = copy.deepcopy(w[0])
+    l2 = np.zeros(len(w))
     for k in w_avg.keys():
-        for i in range(1, len(w)):
-            w_diff[i][k] = w[i][k] - w_global[k]
-            
+        for i in range(0, len(w)):
+            l2[i] += torch.norm(w[i][k] - w_global[k], p=2)
+
+    sorted = np.flip(np.argsort(l2))[0:k_value]
+    print("idxs_users: " + str(sorted))
+    print("compress_ratio: " + str(ratio[sorted]))
+    print("Norm value: " + str(l2[sorted]))
+    w_scheduled = [copy.deepcopy(w[i]) for i in sorted]
+    return randomSparcification(w_scheduled, w_global, ratio)
 
 
-
-
-
-
-
-
-
-def randomQuantization(w, w_global, ratio, defualt_bit_depth=32):
-    w_avg = copy.deepcopy(w[0])
-    for k in w_avg.keys():
-        #maxElement = torch.max(w_global[k]).item()
-        #minElement = torch.min(w_global[k]).item()
-        maxElement = torch.finfo(torch.float32).max
-        minElement = torch.finfo(torch.float32).min
-        for i in range(1, len(w)):
-            bit_depth = round(defualt_bit_depth * (1 - ratio[i]))
-            # step_size = (abs(maxElement - minElement))/(2**bit_depth)
-            step_size = torch.finfo(torch.float32).eps * (defualt_bit_depth / bit_depth)
-            w_avg[k] += torch.floor( (w[i][k]/step_size) + 0.5) * step_size
-        w_avg[k] = torch.div(w_avg[k], len(w))
-    return w_avg
-
-
-
-
-
-
-#### OLD
+## Old
 
 def simpleL2(w, w_global):
     # Very simple and naive scheduling. This scheduling calculates the

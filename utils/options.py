@@ -30,7 +30,8 @@ def args_parser():
     # channel, compression and scheduling
     parser.add_argument('--snr', type=int, default=30, help='SNR for channel modell')
     parser.add_argument('--comp', type=str, default='None', help='Compression type. None is no compression, regardless of channel capacity')
-    parser.add_argument('--sched', type=str, default='random', help='Scheduling type')
+    parser.add_argument('--sched', type=str, default='RS', help='Scheduling type')
+    parser.add_argument('--blocks', type=int, default=1, help='number of blocks per model')
 
     # other arguments
     parser.add_argument('--dataset', type=str, default='mnist', help="name of dataset")

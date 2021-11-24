@@ -16,7 +16,7 @@ from models.Update import LocalUpdate
 from models.Nets import MLP, CNNMnist, CNNCifar
 from models.Fed import FedAvg
 from models.test import test_img
-from utils.scheduling import compressRatio, Scheduler
+from utils.scheduling import Scheduler
 
 
 
@@ -77,8 +77,11 @@ if __name__ == '__main__':
     val_acc_list, net_list = [], []
 
     # scheduling
+    k = max(int(args.frac * args.num_users), 1)
     selectedUsers = np.zeros(args.num_users)
     scheduler = Scheduler(args.num_users, dict_users, dataset_train, args.snr, args.sched, args.comp)
+    # idxs_users = np.random.choice(range(args.num_users), k, replace=False)
+    #idxs_users, compress_ratio = scheduler.newUsers(k)
 
     if args.all_clients: 
         print("Aggregation over all clients")
@@ -95,16 +98,16 @@ if __name__ == '__main__':
         
         ##################################################
         ##### UPLINk SCHEDULING ##########################
-        k = max(int(args.frac * args.num_users), 1) # Numer of users
+        #k = max(int(args.frac * args.num_users), 1) # Numer of users
 
         #idxs_users = np.random.choice(range(args.num_users), m, replace=False) # Select at random
         #idxs_users = userSelection(m, dict_users, dataset_train, selectedUsers, True)
+        
         idxs_users, compress_ratio = scheduler.newUsers(k)
-        print("idxs_users: " + str(idxs_users))
-        print("compress_ratio: " + str(compress_ratio))
-
-
-        selectedUsers[idxs_users] += 1
+        if args.sched != "BN2":
+            print("idxs_users: " + str(idxs_users))
+            print("compress_ratio: " + str(compress_ratio))
+            selectedUsers[idxs_users] += 1
 
         for idx in idxs_users:
             local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users[idx])
@@ -114,11 +117,11 @@ if __name__ == '__main__':
             else:
                 w_locals.append(copy.deepcopy(w))
             loss_locals.append(copy.deepcopy(loss))
-        # update global weights
-        # added w_global to parameters
-        w_glob = FedAvg(w_locals, w_glob, compress_ratio, args.comp)
+            # update global weights
+            # added w_global to parameters
+        w_glob = FedAvg(w_locals, w_glob, compress_ratio, k, args.comp, args.sched, args.blocks)
 
-        # copy weight to net_glob
+            # copy weight to net_glob
         net_glob.load_state_dict(w_glob)
 
         # print loss
@@ -139,6 +142,9 @@ if __name__ == '__main__':
     # save result
     np.save('./save/loss_fed_{}_{}_{}_C{}_iid{}_snr{}_comp{}_scheduling{}.npy'.format(args.dataset, args.model, args.epochs, args.frac, args.iid, args.snr, args.comp, args.sched), loss_train)
     np.save('./save/acc_fed_{}_{}_{}_C{}_iid{}_snr{}_comp{}_scheduling{}.npy'.format(args.dataset, args.model, args.epochs, args.frac, args.iid, args.snr, args.comp, args.sched), acc)
+    if args.sched != 'BN2':
+        np.save('./save/ni_fed_{}_{}_{}_C{}_iid{}_snr{}_comp{}_scheduling{}.npy'.format(args.dataset, args.model, args.epochs, args.frac, args.iid, args.snr, args.comp, args.sched), selectedUsers)
+
     # testing
     net_glob.eval()
     acc_train, loss_train = test_img(net_glob, dataset_train, args)

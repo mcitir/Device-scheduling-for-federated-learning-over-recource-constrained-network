@@ -16,6 +16,7 @@ class Scheduler:
     def newUsers(self, k):
         self.rates.update()
         users = pick(self.rates, k, self.sinceLastPick, self.mode, self.dict_users, self.dataset_train)
+        self.rates.ni[users] += 1
         self.picks[users] += 1
         self.sinceLastPick += 1
         self.sinceLastPick[users] = 0
@@ -23,20 +24,16 @@ class Scheduler:
         return users, ratio
 
 def pick(rates, k, sinceLastPick, mode, dict, dataset):
-    if mode == 'random':
+    if mode == 'RS':
         return np.random.choice(range(rates.nbr_users,), k, replace=False)
-    elif mode == 'capacity':
+    elif mode == 'BC':
         return capacityScheduling(rates, k)
-    elif mode == 'g1':
-        return g1(rates, dict, dataset, k)
+    elif mode == 'BN2':
+        return np.random.choice(range(rates.nbr_users,), rates.nbr_users, replace=False)
+    elif ((mode == 'G1') or (mode =='G1-M')):
+        return g1(rates, dict, dataset, k, mode)
     elif mode == 'old':
         return oldUsers(rates, sinceLastPick, k)
-
-def capacityScheduling(rates, k):
-    ## Return the k users with the highest capacity
-    capacity = rates.bitsPerSymbol
-    sorted = np.argsort(capacity)
-    return np.flip(sorted)[0:k]
 
 def oldUsers(rates, sinceLastPick, k):
     sortedIndex = np.argsort(sinceLastPick)
@@ -69,6 +66,7 @@ class Rates:
         self.nbr_users = nbr_users
         self.samples = N_smooth*N_slot
         self.sampleSize = self.Ts * Bs # Maybe Tu?
+        self.ni = np.zeros(nbr_users)
 
         ## Channel
         self.SNR = SNR
@@ -89,7 +87,16 @@ class Rates:
     def getCapacity(self):
         return self.capacity
 
-def search(rates, distrobution, m, iterations):
+
+# Scheduling Schemes
+
+def capacityScheduling(rates, k):
+    ## Return the k users with the highest capacity
+    capacity = rates.bitsPerSymbol
+    sorted = np.argsort(capacity)
+    return np.flip(sorted)[0:k]
+
+def search(rates, distrobution, m, iterations, mode):
     """
     Given the distrobution matrix, this function searches for a 
     linear combination of m colums that are as evenly distubuted 
@@ -110,8 +117,10 @@ def search(rates, distrobution, m, iterations):
     bucket_min = np.zeros(distrobution.shape[0])
 
     # Increase the probability to pick users selected more seldome
-    # prob = ((max(selectedUsers) - selectedUsers)**2 + 1)/sum((max(selectedUsers) - selectedUsers)**2 + 1)
-    prob = np.ones(rates.nbr_users)/rates.nbr_users
+    if mode == 'G1-M':
+        prob = ((max(rates.ni) - rates.ni)**2 + 1)/sum((max(rates.ni) - rates.ni)**2 + 1)
+    else:
+        prob = np.ones(rates.nbr_users)/rates.nbr_users
     for i in range(iterations):
         bucket = np.random.choice(range(distrobution.shape[0]), m, replace=False, p=prob)
         temp = sum(distrobution[bucket][:])
@@ -123,7 +132,7 @@ def search(rates, distrobution, m, iterations):
     return bucket_min
     
         #print(bucket)
-def g1(rates, dict, dataset, k):
+def g1(rates, dict, dataset, k, mode):
     """
     This function calculates the distribution of classes
     in the local data for every user. From this result the 
@@ -143,7 +152,7 @@ def g1(rates, dict, dataset, k):
             dist[user][labels[feature]] += 1
     dist = dist/len(dict[0])
     
-    return search(rates, dist, k, 1000)
+    return search(rates, dist, k, 1000, mode)
         
 
 
