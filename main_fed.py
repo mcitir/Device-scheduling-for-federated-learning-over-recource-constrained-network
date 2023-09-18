@@ -18,6 +18,10 @@ from models.Fed import FedAvg
 from models.test import test_img
 from utils.scheduling import Scheduler
 
+import signal
+import sys
+import atexit
+
 
 
 ##################################################
@@ -79,9 +83,20 @@ if __name__ == '__main__':
     # scheduling
     k = max(int(args.frac * args.num_users), 1)
     selectedUsers = np.zeros(args.num_users)
-    scheduler = Scheduler(args.num_users, dict_users, dataset_train, args.snr, args.sched, args.comp)
+    scheduler = Scheduler(args.num_users, dict_users, dataset_train, args.snr, args.sched, args.comp,args.model,args.dataset)
     # idxs_users = np.random.choice(range(args.num_users), k, replace=False)
     #idxs_users, compress_ratio = scheduler.newUsers(k)
+
+    # Signal handler for interruption (Ctrl+C)
+    def signal_handler(signum, frame):
+        scheduler.logger.generate_summary()
+        sys.exit(0)
+
+    # Register the signal handler for interruption (Ctrl+C)
+    signal.signal(signal.SIGINT, signal_handler)
+
+    # Register the method to be called upon normal termination
+    atexit.register(scheduler.logger.generate_summary)
 
     if args.all_clients: 
         print("Aggregation over all clients")
@@ -103,7 +118,7 @@ if __name__ == '__main__':
         #idxs_users = np.random.choice(range(args.num_users), m, replace=False) # Select at random
         #idxs_users = userSelection(m, dict_users, dataset_train, selectedUsers, True)
         
-        idxs_users, compress_ratio = scheduler.newUsers(k)
+        idxs_users, compress_ratio = scheduler.newUsers(k, iter) # Iter is the current round number, used for logging
         if args.sched != "BN2":
             print("idxs_users: " + str(idxs_users))
             print("compress_ratio: " + str(compress_ratio))

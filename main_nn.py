@@ -114,12 +114,14 @@ if __name__ == '__main__':
                        transforms.Normalize((0.1307,), (0.3081,))
                    ]))
         test_loader = DataLoader(dataset_test, batch_size=1000, shuffle=False)
+        print('test on', len(dataset_test), 'samples')
     elif args.dataset == 'cifar':
         transform = transforms.Compose(
             [transforms.ToTensor(),
              transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
         dataset_test = datasets.CIFAR10('./data/cifar', train=False, transform=transform, target_transform=None, download=True)
         test_loader = DataLoader(dataset_test, batch_size=1000, shuffle=False)
+        print('test on', len(dataset_test), 'samples')
     else:
         exit('Error: unrecognized dataset')
 
