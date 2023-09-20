@@ -117,6 +117,14 @@ if __name__ == '__main__':
 
         #idxs_users = np.random.choice(range(args.num_users), m, replace=False) # Select at random
         #idxs_users = userSelection(m, dict_users, dataset_train, selectedUsers, True)
+
+        ## Modeling of the preemption
+        # Sangyoung writes a function here that models preemption
+        # idPreempted, timePreempted = preemption(idxs_users)
+
+        ## Here goes Hiroki's algorithm
+            # Sangyoung writes a function here that models training time according to data size
+            # Hiroki can use this inside the algorithm
         
         idxs_users, compress_ratio = scheduler.newUsers(k, iter) # Iter is the current round number, used for logging
         if args.sched != "BN2":
