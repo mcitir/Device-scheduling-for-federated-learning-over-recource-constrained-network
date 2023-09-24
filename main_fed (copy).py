@@ -22,11 +22,7 @@ import signal
 import sys
 import atexit
 
-from utils import can_complete_task, random_delay
-import random
 
-MIN_RATIO = 0.6
-MAX_RATIO = 1.2
 
 ##################################################
 ######## SETUP ###################################
@@ -91,7 +87,7 @@ if __name__ == '__main__':
     # idxs_users = np.random.choice(range(args.num_users), k, replace=False)
     #idxs_users, compress_ratio = scheduler.newUsers(k)
 
-    # This provides to generate a summary of the data when the program is interrupted
+    # Signal handler for interruption (Ctrl+C)
     def signal_handler(signum, frame):
         scheduler.logger.generate_summary()
         sys.exit(0)
@@ -107,29 +103,14 @@ if __name__ == '__main__':
         w_locals = [w_glob for i in range(args.num_users)]    
 
 
-    # Computational capacities for each user
-    # Calculate task_size for each user
-    task_sizes = [len(dict_users[idx]) for idx in range(args.num_users)]
-    # Find an avarage task size
-    avg_task_size = sum(task_sizes) / len(task_sizes)
-
-    # Generate random computational capacities for each user between MIN_RATIO and MAX_RATIO of the average task size
-    computational_capacities = [random.randint(int(MIN_RATIO * avg_task_size), int(MAX_RATIO * avg_task_size)) for _ in range(args.num_users)]
- 
-    # Global time tracker
-    global_time_tracker = 0
-
     ##################################################
     ##### MAIN LOOP ##################################
     for iter in range(args.epochs):
-        # Print current round
-        print("Round: " + str(iter))
-        
         loss_locals = []
         if not args.all_clients:
             w_locals = []
 
-
+        
         ##################################################
         ##### UPLINk SCHEDULING ##########################
         #k = max(int(args.frac * args.num_users), 1) # Numer of users
@@ -150,47 +131,15 @@ if __name__ == '__main__':
 
             # list of users which completed training within time & dataset sizes
         
-        # User selection
         idxs_users, compress_ratio = scheduler.newUsers(k, iter) # Iter is the current round number, used for logging
-        # Track selected users
-        selected_idxs = set(idxs_users)
-        
-        # Track users that couldn't complete the task
-        idx_to_remove = []
-
-        selectedUsers[idxs_users] += 1
-        
         if args.sched != "BN2":
             print("idxs_users: " + str(idxs_users))
             print("compress_ratio: " + str(compress_ratio))
-
+            selectedUsers[idxs_users] += 1
 
         for idx in idxs_users:
             #dict_users = [[1 ,6, 10, 12], [x, y, z], [a, b,c]]
             #data_points = [1, 10]
-            # Get capacity of user
-            min_capacity = computational_capacities[idx] * MIN_RATIO
-            
-            user_capacity = computational_capacities[idx]
-            task_size = len(dict_users[idx])
-            
-            #local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users[idx])
-            
-            # Check if user can complete task
-            if not can_complete_task(user_capacity, task_size):
-                print(f"User {idx} couldn't complete the task due to insufficient capacity.")
-                idx_to_remove.append(idx)
-            
-        # Assign new user for unsuccessful users
-        for removed_idx in idx_to_remove:
-            while True:
-                new_idx = np.random.choice(range(args.num_users))
-                if new_idx not in selected_idxs:
-                    selected_idxs.add(new_idx)
-                    idxs_users = [new_idx if x == removed_idx else x for x in idxs_users]
-                    break
-        
-        for idx in idxs_users:
             local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users[idx])
             w, loss = local.train(net=copy.deepcopy(net_glob).to(args.device))
             if args.all_clients:
@@ -198,13 +147,11 @@ if __name__ == '__main__':
             else:
                 w_locals.append(copy.deepcopy(w))
             loss_locals.append(copy.deepcopy(loss))
-
-
-        # update global weights
-        # added w_global to parameters
+            # update global weights
+            # added w_global to parameters
         w_glob = FedAvg(w_locals, w_glob, compress_ratio, k, args.comp, args.sched, args.blocks)
 
-        # copy weight to net_glob
+            # copy weight to net_glob
         net_glob.load_state_dict(w_glob)
 
         # print loss

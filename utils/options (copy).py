@@ -43,24 +43,5 @@ def args_parser():
     parser.add_argument('--verbose', action='store_true', help='verbose print')
     parser.add_argument('--seed', type=int, default=1, help='random seed (default: 1)')
     parser.add_argument('--all_clients', action='store_true', help='aggregation over all clients')
-    
-    ##################################################
-    
-    # adding new computational capacity argument for each user
-    parser.add_argument('--computational_capacity', type=float, default=1.0, help="computational capacity for each user")
-    
-    # adding maximum number of users that can be training at the same time
-    parser.add_argument('--number_of_max_user', type=int, default=5, help="max number of users that can train simultaneously")
-    
-    # adding time cost arguments for specific actions
-    parser.add_argument('--user_elimination_time', type=float, default=0.1, help="time cost for user elimination")
-    parser.add_argument('--new_user_selection_time', type=float, default=0.2, help="time cost for selecting a new user")
-
-    # adding delay related arguments
-    parser.add_argument('--random_delay_prob', type=float, default=0.1, help="probability of applying delay to a user")
-    parser.add_argument('--max_delay', type=float, default=0.5, help="maximum delay time for a user")
-    
-    ##################################################
-
     args = parser.parse_args()
     return args

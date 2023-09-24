@@ -7,7 +7,6 @@ from datetime import datetime
 import torch
 import pandas as pd
 
-
 ### Scheduler Class
 class Scheduler:
     def __init__(self, m, dict_users, dataset_train, SNR, mode='old', comp='None', model_name='Unknown', dataset='Unknown'):
