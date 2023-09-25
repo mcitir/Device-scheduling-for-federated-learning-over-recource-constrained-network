@@ -7,5 +7,10 @@ def can_complete_task(user_capacity, task_size):
     Returns:
     - True if user can complete the task, False otherwise
     """
+    
         
     return user_capacity >= task_size
+
+def random_delay():
+    
+    return 1

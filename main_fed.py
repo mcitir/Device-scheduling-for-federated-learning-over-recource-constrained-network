@@ -22,7 +22,7 @@ import signal
 import sys
 import atexit
 
-from utils import can_complete_task, random_delay
+from utils.custom_utils import can_complete_task, random_delay
 import random
 
 MIN_RATIO = 0.6
@@ -169,27 +169,39 @@ if __name__ == '__main__':
             #dict_users = [[1 ,6, 10, 12], [x, y, z], [a, b,c]]
             #data_points = [1, 10]
             # Get capacity of user
-            min_capacity = computational_capacities[idx] * MIN_RATIO
-            
-            user_capacity = computational_capacities[idx]
-            task_size = len(dict_users[idx])
+            #min_capacity = computational_capacities[idx] * MIN_RATIO
             
             #local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users[idx])
             
             # Check if user can complete task
-            if not can_complete_task(user_capacity, task_size):
+            if not can_complete_task(computational_capacities[idx], avg_task_size):
                 print(f"User {idx} couldn't complete the task due to insufficient capacity.")
                 idx_to_remove.append(idx)
             
         # Assign new user for unsuccessful users
         for removed_idx in idx_to_remove:
-            while True:
-                new_idx = np.random.choice(range(args.num_users))
-                if new_idx not in selected_idxs:
-                    selected_idxs.add(new_idx)
-                    idxs_users = [new_idx if x == removed_idx else x for x in idxs_users]
-                    break
-        
+            if args.concept == "dynamic": 
+                while True:
+                    
+                    # !!! Here, user selection is done from the user pool, so there is no need to use the scheduler function
+                    # Randomly pick a user except the ones who are already selected
+                    new_idx = np.random.choice(range(args.num_users))
+                    print(f"User {new_idx} was randomly chosen to replace user {removed_idx}.")
+                    if new_idx not in selected_idxs:
+                        # Check if the new user can complete the task
+                        if can_complete_task(computational_capacities[new_idx], avg_task_size):
+                        # Add the newly chosen user to the set of selected users
+                            selected_idxs.add(new_idx)
+                        
+                            # Replace the user who couldn't complete the task (denoted by 'removed_idx') 
+                            # with new candidate users
+                            idxs_users = [new_idx if x == removed_idx else x for x in idxs_users]
+                            break
+            else:
+                # If the concept is not dynamic, then we just remove the user
+                idxs_users.remove(removed_idx)
+
+        # All users in idxs_users can complete the task
         for idx in idxs_users:
             local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users[idx])
             w, loss = local.train(net=copy.deepcopy(net_glob).to(args.device))
@@ -198,7 +210,6 @@ if __name__ == '__main__':
             else:
                 w_locals.append(copy.deepcopy(w))
             loss_locals.append(copy.deepcopy(loss))
-
 
         # update global weights
         # added w_global to parameters

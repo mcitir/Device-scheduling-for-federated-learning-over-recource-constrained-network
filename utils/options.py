@@ -45,6 +45,8 @@ def args_parser():
     parser.add_argument('--all_clients', action='store_true', help='aggregation over all clients')
     
     ##################################################
+    # adding new arguments for selection of concept for federated learning
+    parser.add_argument('--concept', type=str, default='None', help="concept for federated learning: dynamic or None")
     
     # adding new computational capacity argument for each user
     parser.add_argument('--computational_capacity', type=float, default=1.0, help="computational capacity for each user")

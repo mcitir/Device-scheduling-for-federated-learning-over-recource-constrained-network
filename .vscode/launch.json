@@ -20,7 +20,8 @@
                 "--gpu", "0",
                 "--sched", "RS",
                 "--frac", "0.2",
-                "--num_users", "10"
+                "--num_users", "10",
+                "--concept", "dynamic",
             ]
         }
     ]
