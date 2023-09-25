@@ -122,6 +122,8 @@ if __name__ == '__main__':
     ##################################################
     ##### MAIN LOOP ##################################
     for iter in range(args.epochs):
+        # Print concept name
+        print("Concept: " + args.concept)
         # Print current round
         print("Round: " + str(iter))
         
@@ -186,17 +188,20 @@ if __name__ == '__main__':
                     # !!! Here, user selection is done from the user pool, so there is no need to use the scheduler function
                     # Randomly pick a user except the ones who are already selected
                     new_idx = np.random.choice(range(args.num_users))
-                    print(f"User {new_idx} was randomly chosen to replace user {removed_idx}.")
                     if new_idx not in selected_idxs:
                         # Check if the new user can complete the task
                         if can_complete_task(computational_capacities[new_idx], avg_task_size):
                         # Add the newly chosen user to the set of selected users
                             selected_idxs.add(new_idx)
+                            
                         
                             # Replace the user who couldn't complete the task (denoted by 'removed_idx') 
                             # with new candidate users
                             idxs_users = [new_idx if x == removed_idx else x for x in idxs_users]
+                            print(f"User {new_idx} was randomly chosen to replace user {removed_idx}.")
                             break
+                        else:
+                            print(f"User {new_idx} couldn't be replaced because it also can't complete the task.")
             else:
                 # If the concept is not dynamic, then we just remove the user
                 idxs_users.remove(removed_idx)
