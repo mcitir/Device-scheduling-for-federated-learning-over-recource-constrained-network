@@ -19,8 +19,8 @@ def can_complete_task(fluction_computation_capability, maximum_computation_capab
     if computation_latency_probability != -1:
         return 1 - computation_latency_probability >= threshold
     else:
-        # Burada bir log kaydı alabilir veya exception fırlatabilirsiniz
-        raise ValueError("Error in compute_computation_latency_probability")
+        # A log record will be created when this exception is raised
+        raise ValueError("Error in probability calculation")
 
 
 def compute_computation_latency_probability(fluction_computation_capability, maximum_computation_capability, deadline_constraint, datasize):
@@ -32,15 +32,15 @@ def compute_computation_latency_probability(fluction_computation_capability, max
     -   datasize: float
 
     Returns:
-    -   float: Probability of computation latency
+    -   probability_of_computation_latency: float
     """
-    exponential = math.exp((-(fluction_computation_capability * deadline_constraint) / datasize) 
+    computation_latency_probability = 1 - math.exp((-(fluction_computation_capability * deadline_constraint) / datasize) 
                             + (fluction_computation_capability * maximum_computation_capability))
     
-    if 0 <= exponential <= 1:
-        return (1 - exponential)
+    if 0 <= computation_latency_probability <= 1:
+        return computation_latency_probability
     else:
-        return -1
+        raise ValueError("Error in computation_latency_probability calculation")
     
 
 def random_delay():

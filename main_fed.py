@@ -34,6 +34,10 @@ PREEMPTION_DELAY = 50
 # Calculate dataset size for each user by using total dataset size and number of users
 UNIFORM_DATASET_SIZE = None
 IDEAL_COMPUTATIONAL_CAPACITY = None
+SUCCESS_THRESHOLD = 0.75
+
+ideal_computation_condition = False # If it is True, no latency in computation
+
 
 
 ##################################################
@@ -125,7 +129,6 @@ if __name__ == '__main__':
    
     # Generate random computational capacities for each user between MIN_RATIO and MAX_RATIO of the average task size (float)
     
-    ideal_computation_condition = True
     if not ideal_computation_condition:
         maximum_computation_capabilities = [round(random.uniform((MIN_RATIO * IDEAL_COMPUTATIONAL_CAPACITY), 
                                                 (MAX_RATIO * IDEAL_COMPUTATIONAL_CAPACITY)), 4) for _ in range(args.num_users)]
@@ -197,7 +200,10 @@ if __name__ == '__main__':
             #local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users[idx])
             
             # Check if user can complete task
-            if not can_complete_task(fluction_computation_capabilities[idx], maximum_computation_capabilities[idx], EPOCH_TIME, UNIFORM_DATASET_SIZE, 0.75):
+            if not can_complete_task(fluction_computation_capabilities[idx], 
+                                     maximum_computation_capabilities[idx], 
+                                     EPOCH_TIME, UNIFORM_DATASET_SIZE,
+                                     SUCCESS_THRESHOLD):
             #if not can_complete_task(computational_capacities[idx], avg_task_size):
                 print(f"User {idx} couldn't complete the task due to insufficient capacity.")
                 idx_to_remove.append(idx)
@@ -212,7 +218,11 @@ if __name__ == '__main__':
                     new_idx = np.random.choice(range(args.num_users))
                     if new_idx not in selected_idxs:
                         # Check if the new user can complete the task
-                        if can_complete_task(computational_capacities[new_idx], avg_task_size):
+                        if can_complete_task(fluction_computation_capabilities[idx],
+                                             maximum_computation_capabilities[idx],
+                                             EPOCH_TIME,
+                                             UNIFORM_DATASET_SIZE,
+                                             SUCCESS_THRESHOLD):
                         # Add the newly chosen user to the set of selected users
                             selected_idxs.add(new_idx)
                             
