@@ -27,6 +27,14 @@ import random
 
 MIN_RATIO = 0.6
 MAX_RATIO = 1.2
+EPOCH_TIME = 600 # Deadline Constraint, 10 minutes in seconds
+# Predefined delays for unique process
+RESELECTION_DELAY = 10
+PREEMPTION_DELAY = 50
+# Calculate dataset size for each user by using total dataset size and number of users
+UNIFORM_DATASET_SIZE = None
+IDEAL_COMPUTATIONAL_CAPACITY = None
+
 
 ##################################################
 ######## SETUP ###################################
@@ -72,6 +80,12 @@ if __name__ == '__main__':
     print(net_glob)
     net_glob.train()
 
+    # Finding the size of the dataset for each user by using the total dataset size and number of users
+    UNIFORM_DATASET_SIZE = len(dataset_train) / args.num_users
+
+    # Finding the ideal computational capacity by using UNIFORM_DATASET_SIZE and EPOCH_TIME (second per data point)
+    IDEAL_COMPUTATIONAL_CAPACITY = EPOCH_TIME / UNIFORM_DATASET_SIZE
+
     # copy weights
     w_glob = net_glob.state_dict()
 
@@ -108,14 +122,21 @@ if __name__ == '__main__':
 
 
     # Computational capacities for each user
-    # Calculate task_size for each user
-    task_sizes = [len(dict_users[idx]) for idx in range(args.num_users)]
-    # Find an avarage task size
-    avg_task_size = sum(task_sizes) / len(task_sizes)
+   
+    # Generate random computational capacities for each user between MIN_RATIO and MAX_RATIO of the average task size (float)
+    
+    ideal_computation_condition = True
+    if not ideal_computation_condition:
+        maximum_computation_capabilities = [round(random.uniform((MIN_RATIO * IDEAL_COMPUTATIONAL_CAPACITY), 
+                                                (MAX_RATIO * IDEAL_COMPUTATIONAL_CAPACITY)), 4) for _ in range(args.num_users)]
+        
+        fluction_computation_capabilities = [round(capacity * random.uniform(0.75, 0.95), 4) for capacity in maximum_computation_capabilities]
 
-    # Generate random computational capacities for each user between MIN_RATIO and MAX_RATIO of the average task size
-    computational_capacities = [random.randint(int(MIN_RATIO * avg_task_size), int(MAX_RATIO * avg_task_size)) for _ in range(args.num_users)]
- 
+    else:
+        # Ideal computational capacities for each user
+        maximum_computation_capabilities = [IDEAL_COMPUTATIONAL_CAPACITY for _ in range(args.num_users)]
+        fluction_computation_capabilities = maximum_computation_capabilities
+    
     # Global time tracker
     global_time_tracker = 0
 
@@ -176,7 +197,8 @@ if __name__ == '__main__':
             #local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users[idx])
             
             # Check if user can complete task
-            if not can_complete_task(computational_capacities[idx], avg_task_size):
+            if not can_complete_task(fluction_computation_capabilities[idx], maximum_computation_capabilities[idx], EPOCH_TIME, UNIFORM_DATASET_SIZE, 0.75):
+            #if not can_complete_task(computational_capacities[idx], avg_task_size):
                 print(f"User {idx} couldn't complete the task due to insufficient capacity.")
                 idx_to_remove.append(idx)
             
