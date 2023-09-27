@@ -16,8 +16,11 @@ def can_complete_task(fluction_computation_capability, maximum_computation_capab
     computation_latency_probability = compute_computation_latency_probability(fluction_computation_capability,
                                                           maximum_computation_capability,
                                                           deadline_constraint, datasize)
+    interruption_latency_probability = compute_interruption_latency_probability()
+    communication_latency_probability = compute_communication_latency_probability()
+
     if computation_latency_probability != -1:
-        return 1 - computation_latency_probability >= threshold
+        return 1 - computation_latency_probability - interruption_latency_probability - communication_latency_probability >= threshold
     else:
         # A log record will be created when this exception is raised
         raise ValueError("Error in probability calculation")
@@ -42,6 +45,29 @@ def compute_computation_latency_probability(fluction_computation_capability, max
     else:
         raise ValueError("Error in computation_latency_probability calculation")
     
+
+def compute_interruption_latency_probability():
+    """
+    Parameters:
+
+    
+    Returns:
+
+    """
+    
+    return 0
+
+def compute_communication_latency_probability():
+    """
+    Parameters:
+
+    
+    Returns:
+
+    """
+    
+    return 0
+
 
 def random_delay():
     

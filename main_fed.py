@@ -36,7 +36,7 @@ UNIFORM_DATASET_SIZE = None
 IDEAL_COMPUTATIONAL_CAPACITY = None
 SUCCESS_THRESHOLD = 0.75
 
-ideal_computation_condition = False # If it is True, no latency in computation
+ideal_computation_condition = True # If it is True, no latency in computation
 
 
 
