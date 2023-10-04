@@ -1,5 +1,6 @@
 import math
 import numpy as np
+from scipy.optimize import fsolve
 
 def can_complete_task(fluction_computation_capability, maximum_computation_capability, deadline_constraint, datasize):
     """
@@ -82,3 +83,31 @@ def  apply_preemption(users, probability, max_preemption_time=60):
     preemption_times *= apply_preemption
     
     return list(zip(users, preemption_times))
+
+##############################################################################################################
+
+def exponential_inverse(u, mu_i, D_i, a_i):
+
+    # Function to find the root of ..
+    def fun(t):
+        return 1 - np.exp(-((mu_i * t) / D_i) + mu_i * a_i) - u
+    
+    # Initial guess
+    t_sample = fsolve(fun, 0.0)
+
+    return t_sample[0]
+
+def generate_t_sample_for_computation_latency(fluction_computation_capability, maximum_computation_capability, datasize):
+    
+    """
+    
+    This function generates a random sample from the distribution of computation latency
+    
+    """
+
+    # u should be a random number between 0 and 1
+    u = np.random.uniform(0, 1)
+
+    t_sample = exponential_inverse(u, fluction_computation_capability, datasize, maximum_computation_capability)
+    # return u and t_sample
+    return u, t_sample
