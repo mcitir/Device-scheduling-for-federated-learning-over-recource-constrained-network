@@ -14,22 +14,38 @@ def can_complete_task(fluction_computation_capability, maximum_computation_capab
     Returns:
     -   bool: True if the task can be completed within the deadline, False otherwise
     """
-    
-    computation_latency_probability = compute_computation_latency_probability(fluction_computation_capability,
-                                                          maximum_computation_capability,
-                                                          deadline_constraint, datasize)
-    interruption_latency_probability = compute_interruption_latency_probability()
-    communication_latency_probability = compute_communication_latency_probability()
+    ##################################################
+    # Because of implementation of t_sample generation, the old version of this function is not used anymore
 
-    if computation_latency_probability != -1:
+    # computation_latency_probability = compute_computation_latency_probability(fluction_computation_capability,
+    #                                                       maximum_computation_capability,
+    #                                                       deadline_constraint, datasize)
+    # interruption_latency_probability = compute_interruption_latency_probability()
+    # communication_latency_probability = compute_communication_latency_probability()
 
-        total_latency_probability = computation_latency_probability * interruption_latency_probability * communication_latency_probability
+    # if computation_latency_probability != -1:
+
+    #     total_latency_probability = computation_latency_probability * interruption_latency_probability * communication_latency_probability
         
-        return np.random.choice([True, False], p=[1-total_latency_probability, total_latency_probability])
-    else:
-        # A log record will be created when this exception is raised
-        raise ValueError("Error in probability calculation")
+    #     return np.random.choice([True, False], p=[1-total_latency_probability, total_latency_probability])
+    # else:
+    #     # A log record will be created when this exception is raised
+    #     raise ValueError("Error in probability calculation")
+    ##################################################
 
+    # calculate t_cp via generate_t_sample_for_computation_latency()
+    u_cp, t_cp = generate_t_sample_for_computation_latency(fluction_computation_capability, 
+                                                           maximum_computation_capability, 
+                                                           datasize)
+    print("u_cp: ", u_cp)
+    print("t_cp: ", t_cp)
+    
+    # Sum of all latencies
+    total_latency = t_cp
+
+    # If the total latency is less than the deadline constraint, then the task can be completed within the deadline
+    if total_latency <= deadline_constraint:
+        return True
 
 def compute_computation_latency_probability(fluction_computation_capability, maximum_computation_capability, deadline_constraint, datasize):
     """
