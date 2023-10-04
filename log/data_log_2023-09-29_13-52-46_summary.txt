@@ -1,0 +1,68 @@
+Model: cnn
+Dataset: cifar
+Scheduler: RS
+Total rounds completed: 30
+
+Number of users per round:
+Round 0: 2 users
+Round 1: 2 users
+Round 2: 2 users
+Round 3: 2 users
+Round 4: 2 users
+Round 5: 2 users
+Round 6: 2 users
+Round 7: 2 users
+Round 8: 2 users
+Round 9: 2 users
+Round 10: 2 users
+Round 11: 2 users
+Round 12: 2 users
+Round 13: 2 users
+Round 14: 2 users
+Round 15: 2 users
+Round 16: 2 users
+Round 17: 2 users
+Round 18: 2 users
+Round 19: 2 users
+Round 20: 2 users
+Round 21: 2 users
+Round 22: 2 users
+Round 23: 2 users
+Round 24: 2 users
+Round 25: 2 users
+Round 26: 2 users
+Round 27: 2 users
+Round 28: 2 users
+Round 29: 2 users
+
+Average capacity per round:
+Round 0: 13.22
+Round 1: 12.55
+Round 2: 15.18
+Round 3: 11.92
+Round 4: 12.54
+Round 5: 14.89
+Round 6: 14.10
+Round 7: 14.72
+Round 8: 14.46
+Round 9: 15.02
+Round 10: 15.05
+Round 11: 16.14
+Round 12: 14.18
+Round 13: 14.82
+Round 14: 13.78
+Round 15: 13.92
+Round 16: 14.04
+Round 17: 13.77
+Round 18: 14.72
+Round 19: 13.15
+Round 20: 14.33
+Round 21: 13.36
+Round 22: 12.28
+Round 23: 13.37
+Round 24: 12.83
+Round 25: 15.26
+Round 26: 13.81
+Round 27: 15.53
+Round 28: 15.90
+Round 29: 13.92

@@ -22,21 +22,31 @@ import signal
 import sys
 import atexit
 
-from utils.custom_utils import can_complete_task, random_delay
+from utils.custom_utils import can_complete_task, apply_preemption
 import random
 
+# Global variables
+SEED_VALUE = 2023
 MIN_RATIO = 0.6
 MAX_RATIO = 1.2
 EPOCH_TIME = 600 # Deadline Constraint, 10 minutes in seconds
-# Predefined delays for unique process
-RESELECTION_DELAY = 10
-PREEMPTION_DELAY = 50
-# Calculate dataset size for each user by using total dataset size and number of users
-UNIFORM_DATASET_SIZE = None
-IDEAL_COMPUTATIONAL_CAPACITY = None
-SUCCESS_THRESHOLD = 0.75
 
-ideal_computation_condition = True # If it is True, no latency in computation
+# Predefined delays for unique process
+MAX_PREEMPTION_DELAY = 60
+PREEMPTION_PROBABILITY = 0.2 # 20% probability for applying preemption to a user
+preempted_users = None
+
+USER_RESELECTION_DELAY = 10
+
+# Calculate dataset size for each user by using total dataset size and number of users
+UNIFORM_DATASET_SIZE = None # This will be calculated in the main loop; it defines the size of the dataset for each user in the case of uniform distribution
+MAX_COMPUTATION = 0.08
+FLUCTUATION_COMPUTATION = 30
+
+
+# Usecase specific variables
+UNIFORM_DATASIZE_DISTRIBUTION = True # If it is True, data is distributed uniformly among users
+
 
 
 
@@ -85,10 +95,10 @@ if __name__ == '__main__':
     net_glob.train()
 
     # Finding the size of the dataset for each user by using the total dataset size and number of users
-    UNIFORM_DATASET_SIZE = len(dataset_train) / args.num_users
-
-    # Finding the ideal computational capacity by using UNIFORM_DATASET_SIZE and EPOCH_TIME (second per data point)
-    IDEAL_COMPUTATIONAL_CAPACITY = EPOCH_TIME / UNIFORM_DATASET_SIZE
+    if UNIFORM_DATASIZE_DISTRIBUTION:
+        UNIFORM_DATASET_SIZE = len(dataset_train) / args.num_users
+    else:
+        raise ValueError("Error in dataset size distribution") # This is not implemented yet
 
     # copy weights
     w_glob = net_glob.state_dict()
@@ -106,8 +116,6 @@ if __name__ == '__main__':
     k = max(int(args.frac * args.num_users), 1)
     selectedUsers = np.zeros(args.num_users)
     scheduler = Scheduler(args.num_users, dict_users, dataset_train, args.snr, args.sched, args.comp,args.model,args.dataset)
-    # idxs_users = np.random.choice(range(args.num_users), k, replace=False)
-    #idxs_users, compress_ratio = scheduler.newUsers(k)
 
     # This provides to generate a summary of the data when the program is interrupted
     def signal_handler(signum, frame):
@@ -125,23 +133,10 @@ if __name__ == '__main__':
         w_locals = [w_glob for i in range(args.num_users)]    
 
 
-    # Computational capacities for each user
-   
-    # Generate random computational capacities for each user between MIN_RATIO and MAX_RATIO of the average task size (float)
+    # Computational capacities for each user 
+    maximum_computation_capabilities =[MAX_COMPUTATION for _ in range(args.num_users)]
+    fluction_computation_capabilities = [FLUCTUATION_COMPUTATION for _ in range(args.num_users)]
     
-    if not ideal_computation_condition:
-        maximum_computation_capabilities = [round(random.uniform((MIN_RATIO * IDEAL_COMPUTATIONAL_CAPACITY), 
-                                                (MAX_RATIO * IDEAL_COMPUTATIONAL_CAPACITY)), 4) for _ in range(args.num_users)]
-        
-        fluction_computation_capabilities = [round(capacity * random.uniform(0.75, 0.95), 4) for capacity in maximum_computation_capabilities]
-
-    else:
-        # Ideal computational capacities for each user
-        maximum_computation_capabilities = [IDEAL_COMPUTATIONAL_CAPACITY for _ in range(args.num_users)]
-        fluction_computation_capabilities = maximum_computation_capabilities
-    
-    # Global time tracker
-    global_time_tracker = 0
 
     ##################################################
     ##### MAIN LOOP ##################################
@@ -151,6 +146,9 @@ if __name__ == '__main__':
         # Print current round
         print("Round: " + str(iter))
         
+        # Reset available time for each user
+        available_time = EPOCH_TIME
+
         loss_locals = []
         if not args.all_clients:
             w_locals = []
@@ -163,9 +161,6 @@ if __name__ == '__main__':
         #idxs_users = np.random.choice(range(args.num_users), m, replace=False) # Select at random
         #idxs_users = userSelection(m, dict_users, dataset_train, selectedUsers, True)
 
-        ## Modeling of the preemption
-        # Sangyoung writes a function here that models preemption
-        # idPreempted, timePreempted = preemption(idxs_users)
 
         ## Here goes Hiroki's algorithm
             # Sangyoung writes a function here that models training time according to data size
@@ -180,6 +175,15 @@ if __name__ == '__main__':
         idxs_users, compress_ratio = scheduler.newUsers(k, iter) # Iter is the current round number, used for logging
         # Track selected users
         selected_idxs = set(idxs_users)
+
+        ## Modeling of the preemption
+        # Sangyoung writes a function here that models preemption
+        # idPreempted, timePreempted = preemption(idxs_users)
+
+        # Apply preemption
+        # Return list of tuples (user_id, preemption_time)
+        # Num of users, probability of preemption, max preemption time (seconds)
+        preempted_users = apply_preemption(range(args.num_users), PREEMPTION_PROBABILITY, MAX_PREEMPTION_DELAY)
         
         # Track users that couldn't complete the task
         idx_to_remove = []
@@ -192,48 +196,51 @@ if __name__ == '__main__':
 
 
         for idx in idxs_users:
-            #dict_users = [[1 ,6, 10, 12], [x, y, z], [a, b,c]]
-            #data_points = [1, 10]
-            # Get capacity of user
-            #min_capacity = computational_capacities[idx] * MIN_RATIO
-            
-            #local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users[idx])
             
             # Check if user can complete task
             if not can_complete_task(fluction_computation_capabilities[idx], 
                                      maximum_computation_capabilities[idx], 
-                                     EPOCH_TIME, UNIFORM_DATASET_SIZE,
-                                     SUCCESS_THRESHOLD):
-            #if not can_complete_task(computational_capacities[idx], avg_task_size):
+                                     EPOCH_TIME, UNIFORM_DATASET_SIZE):
+            
                 print(f"User {idx} couldn't complete the task due to insufficient capacity.")
                 idx_to_remove.append(idx)
             
-        # Assign new user for unsuccessful users
+        # Assign new user for each unsuccessful users
         for removed_idx in idx_to_remove:
-            if args.concept == "dynamic": 
-                while True:
+            if args.concept == "dynamic":
+                avaliable_users = set(range(args.num_users)) - selected_idxs
+                last_tested_user = removed_idx
+
+                while avaliable_users:
+
+                    # Here, if the selected user can't complete the task, then we need to continue to select a new user.
+                    # So, we need to continue reducing the available time for this user.
+                    # Calculate available time for the user.
+                    available_time -= USER_RESELECTION_DELAY
+                    print(f"User {last_tested_user} couldn't be selected. Available time is now {available_time} seconds.")
                     
                     # !!! Here, user selection is done from the user pool, so there is no need to use the scheduler function
                     # Randomly pick a user except the ones who are already selected
-                    new_idx = np.random.choice(range(args.num_users))
-                    if new_idx not in selected_idxs:
-                        # Check if the new user can complete the task
-                        if can_complete_task(fluction_computation_capabilities[idx],
-                                             maximum_computation_capabilities[idx],
-                                             EPOCH_TIME,
-                                             UNIFORM_DATASET_SIZE,
-                                             SUCCESS_THRESHOLD):
-                        # Add the newly chosen user to the set of selected users
-                            selected_idxs.add(new_idx)
-                            
+                    new_idx = np.random.choice(list(avaliable_users))
+                    last_tested_user = new_idx
+                    avaliable_users.remove(new_idx)
+                    
+                    # Check if the new user can complete the task
+                    if can_complete_task(fluction_computation_capabilities[last_tested_user],
+                                            maximum_computation_capabilities[last_tested_user],
+                                            available_time,
+                                            UNIFORM_DATASET_SIZE):
+                    # Add the newly chosen user to the set of selected users
+                        selected_idxs.add(last_tested_user)
                         
-                            # Replace the user who couldn't complete the task (denoted by 'removed_idx') 
-                            # with new candidate users
-                            idxs_users = [new_idx if x == removed_idx else x for x in idxs_users]
-                            print(f"User {new_idx} was randomly chosen to replace user {removed_idx}.")
-                            break
-                        else:
-                            print(f"User {new_idx} couldn't be replaced because it also can't complete the task.")
+                    
+                        # Replace the user who couldn't complete the task (denoted by 'removed_idx') 
+                        # with new candidate users
+                        idxs_users = [last_tested_user if x == removed_idx else x for x in idxs_users]
+                        print(f"User {last_tested_user} was randomly chosen to replace user {removed_idx}.")
+                        break
+                    else:
+                        pass #print(f"User {new_idx} couldn't be replaced because it also can't complete the task.")
             else:
                 # If the concept is not dynamic, then we just remove the user
                 idxs_users.remove(removed_idx)
@@ -282,7 +289,3 @@ if __name__ == '__main__':
     acc_test, loss_test = test_img(net_glob, dataset_test, args)
     print("Training accuracy: {:.2f}".format(acc_train))
     print("Testing accuracy: {:.2f}".format(acc_test))
-
-    # Eget
-    #print("Number of times user n was selected during training: {:.0f}".format(selectedUsers))
-    #print("Variance of user selection: {:.2f}".format(np.var(selectedUsers)))
