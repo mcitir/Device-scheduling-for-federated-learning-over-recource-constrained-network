@@ -47,7 +47,9 @@ FLUCTUATION_COMPUTATION = 30
 # Usecase specific variables
 UNIFORM_DATASIZE_DISTRIBUTION = True # If it is True, data is distributed uniformly among users
 
-
+# Interruption parameters
+LAMBDA_I = 0.002 # Avarage rate at which interruptions occur per unit time (per second), 0.002 means 1 interruption every 500 seconds
+MU_K = 5 # Execution rate (interruption duration) in seconds
 
 
 ##################################################
@@ -200,7 +202,8 @@ if __name__ == '__main__':
             # Check if user can complete task
             if not can_complete_task(fluction_computation_capabilities[idx], 
                                      maximum_computation_capabilities[idx], 
-                                     EPOCH_TIME, UNIFORM_DATASET_SIZE):
+                                     EPOCH_TIME, UNIFORM_DATASET_SIZE, LAMBDA_I, 
+                                     MU_K):
             
                 print(f"User {idx} couldn't complete the task due to insufficient capacity.")
                 idx_to_remove.append(idx)
@@ -229,7 +232,7 @@ if __name__ == '__main__':
                     if can_complete_task(fluction_computation_capabilities[last_tested_user],
                                             maximum_computation_capabilities[last_tested_user],
                                             available_time,
-                                            UNIFORM_DATASET_SIZE):
+                                            UNIFORM_DATASET_SIZE, LAMBDA_I, MU_K):
                     # Add the newly chosen user to the set of selected users
                         selected_idxs.add(last_tested_user)
                         

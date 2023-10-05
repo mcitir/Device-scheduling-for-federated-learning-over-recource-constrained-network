@@ -9,7 +9,10 @@
 # ::python main_fed.py --dataset cifar --iid --num_channels 1 --model cnn --epochs 30 --gpu 0  --sched BN2 --frac 0.05
 # ::python main_fed.py --dataset cifar --iid --num_channels 1 --model cnn --epochs 30 --gpu 0  --sched G1 --frac 0.05
 # ::python main_fed.py --dataset cifar --iid --num_channels 1 --model cnn --epochs 30 --gpu 0  --sched G1-M --frac 0.05
-python main_fed.py --dataset cifar --iid --num_channels 1 --model cnn --epochs 30 --gpu 0  --sched RS --frac 0.2 --num_users 10
+
+# use this for dynamic concept
+python main_fed.py --dataset cifar --iid --num_channels 1 --model cnn --epochs 30 --gpu 0  --sched RS --frac 0.2 --num_users 10 --concept dynamic
+
 python main_fed.py --dataset cifar --iid --num_channels 1 --model cnn --epochs 30 --gpu 0  --sched BC --frac 0.2 --num_users 10
 python main_fed.py --dataset cifar --iid --num_channels 1 --model cnn --epochs 30 --gpu 0  --sched BN2 --frac 0.2 --num_users 10
 python main_fed.py --dataset cifar --iid --num_channels 1 --model cnn --epochs 30 --gpu 0  --sched G1 --frac 0.2 --num_users 10
