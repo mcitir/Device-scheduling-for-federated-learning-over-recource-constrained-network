@@ -1,0 +1,18 @@
+Model: cnn
+Dataset: cifar
+Scheduler: RS
+Total rounds completed: 5
+
+Number of users per round:
+Round 0: 2 users
+Round 1: 2 users
+Round 2: 2 users
+Round 3: 2 users
+Round 4: 2 users
+
+Average capacity per round:
+Round 0: 16.10
+Round 1: 10.17
+Round 2: 15.57
+Round 3: 12.07
+Round 4: 13.90

@@ -48,8 +48,8 @@ FLUCTUATION_COMPUTATION = 30
 UNIFORM_DATASIZE_DISTRIBUTION = True # If it is True, data is distributed uniformly among users
 
 # Interruption parameters
-LAMBDA_I = 0.002 # Avarage rate at which interruptions occur per unit time (per second), 0.002 means 1 interruption every 500 seconds
-MU_K = 5 # Execution rate (interruption duration) in seconds
+LAMBDA_I = 0.004 # Avarage rate at which interruptions occur per unit time (per second), 0.004 means 4 interruption every 1000 seconds
+MU_K = 30 # Execution rate (interruption duration) in seconds
 
 
 ##################################################
