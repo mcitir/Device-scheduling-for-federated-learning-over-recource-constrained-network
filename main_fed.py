@@ -22,7 +22,7 @@ import signal
 import sys
 import atexit
 
-from utils.custom_utils import can_complete_task, apply_preemption
+from utils.custom_utils import can_complete_task, select_user, apply_preemption
 import random
 
 # Global variables
@@ -31,26 +31,30 @@ MIN_RATIO = 0.6
 MAX_RATIO = 1.2
 EPOCH_TIME = 600 # Deadline Constraint, 10 minutes in seconds
 
-# Predefined delays for unique process
-MAX_PREEMPTION_DELAY = 60
-PREEMPTION_PROBABILITY = 0.2 # 20% probability for applying preemption to a user
-preempted_users = None
-
-USER_RESELECTION_DELAY = 10
-
 # Calculate dataset size for each user by using total dataset size and number of users
 UNIFORM_DATASET_SIZE = None # This will be calculated in the main loop; it defines the size of the dataset for each user in the case of uniform distribution
 MAX_COMPUTATION = 0.08
 FLUCTUATION_COMPUTATION = 30
-
 
 # Usecase specific variables
 UNIFORM_DATASIZE_DISTRIBUTION = True # If it is True, data is distributed uniformly among users
 
 # Interruption parameters
 LAMBDA_I = 0.004 # Avarage rate at which interruptions occur per unit time (per second), 0.004 means 4 interruption every 1000 seconds
-MU_K = 30 # Execution rate (interruption duration) in seconds
+MU_K = 300 # Execution rate (interruption duration) in seconds
 
+
+class Node:
+    def __init__(self, node_idx, user_idx, available_time):
+        self.node_idx = node_idx
+        self.user_idx = user_idx
+        self.available_time = available_time
+        
+        self.tested_users = []
+
+
+    def __repr__(self):
+        return f"Node(node_idx={self.node_idx}, user_idx={self.user_idx}, available_time={self.available_time})"
 
 ##################################################
 ######## SETUP ###################################
@@ -139,74 +143,112 @@ if __name__ == '__main__':
     maximum_computation_capabilities =[MAX_COMPUTATION for _ in range(args.num_users)]
     fluction_computation_capabilities = [FLUCTUATION_COMPUTATION for _ in range(args.num_users)]
     
+    # Node generation
+    nodes = [Node(idx+1, None, EPOCH_TIME) for idx in range(k)] # k: defined in the scheduling section
 
     ##################################################
     ##### MAIN LOOP ##################################
     for iter in range(args.epochs):
-        # Print concept name
         print("Concept: " + args.concept)
-        # Print current round
         print("Round: " + str(iter))
         
-        # Reset available time for each user
-        available_time = EPOCH_TIME
-
         loss_locals = []
         if not args.all_clients:
             w_locals = []
-
-
-        ##################################################
-        ##### UPLINk SCHEDULING ##########################
-        #k = max(int(args.frac * args.num_users), 1) # Numer of users
-
-        #idxs_users = np.random.choice(range(args.num_users), m, replace=False) # Select at random
-        #idxs_users = userSelection(m, dict_users, dataset_train, selectedUsers, True)
-
-
-        ## Here goes Hiroki's algorithm
-            # Sangyoung writes a function here that models training time according to data size
-            #  Hiroki can use this inside the algorithm
-            # list of users & dataset sizes
-
-            # probabilities.. regarding when actually the training finishes
-
-            # list of users which completed training within time & dataset sizes
         
+        node_to_update = []
+        #idx_to_remove = []
+
         # User selection
         idxs_users, compress_ratio = scheduler.newUsers(k, iter) # Iter is the current round number, used for logging
-        # Track selected users
-        selected_idxs = set(idxs_users)
-
-        ## Modeling of the preemption
-        # Sangyoung writes a function here that models preemption
-        # idPreempted, timePreempted = preemption(idxs_users)
-
-        # Apply preemption
-        # Return list of tuples (user_id, preemption_time)
-        # Num of users, probability of preemption, max preemption time (seconds)
-        preempted_users = apply_preemption(range(args.num_users), PREEMPTION_PROBABILITY, MAX_PREEMPTION_DELAY)
-        
-        # Track users that couldn't complete the task
-        idx_to_remove = []
-
+        selected_idxs = set(idxs_users) 
         selectedUsers[idxs_users] += 1
+        available_users = set(range(args.num_users)) - selected_idxs
         
         if args.sched != "BN2":
             print("idxs_users: " + str(idxs_users))
             print("compress_ratio: " + str(compress_ratio))
 
+        # Assign users to nodes
+        for node, user_idx in zip(nodes, idxs_users):
+            node.user_idx = user_idx
+         
+        for node in nodes:
+            idx = node.user_idx
 
+            # Check if the user can complete task
+            can_complete, node.available_time, latency_info = can_complete_task(fluction_computation_capabilities[idx], 
+                                        maximum_computation_capabilities[idx], 
+                                        node.available_time, UNIFORM_DATASET_SIZE, LAMBDA_I, 
+                                        MU_K)
+            
+            if not can_complete:
+                node_to_update.append(node)
+                #node.user_idx = None
+                print(f"[NODE {node.node_idx}] User {idx} FAILED and the remaining time is {node.available_time} seconds.")
+        
+        # Handle nodes whose users couldn't complete the task
+        for node in node_to_update:
+            last_unsuccesful_user = node.user_idx
+            node.tested_users.append(last_unsuccesful_user)
+            node.user_idx = None
+            if args.concept == "dynamic":
+                while available_users:
+                    # if last_unsuccesful_user is in the available users, then remove it
+                    if last_unsuccesful_user in available_users:
+                        available_users.remove(last_unsuccesful_user)
+                    new_idx = select_user(available_users,
+                                          node.available_time,
+                                          fluction_computation_capabilities,
+                                          maximum_computation_capabilities)
+                    
+
+                    if node.available_time <= 0:
+                        print(f"[NODE {node.node_idx}] No available time left for User {new_idx} replacement.")
+                        break
+                    else:
+                        can_complete, node.available_time, latency_info = can_complete_task(fluction_computation_capabilities[new_idx], 
+                                                                    maximum_computation_capabilities[new_idx], 
+                                                                    node.available_time, UNIFORM_DATASET_SIZE, LAMBDA_I, 
+                                                                    MU_K)
+                    # !!! Think an idea: can_complete is True but available_time is more than 0
+
+                    # !!! Think an idea: Should I release the users for the next node, if they are not selected?
+
+                    if can_complete:
+                        #selected_idxs.add(last_tested_user)
+                        node.user_idx = new_idx
+                        print(f"User {node.user_idx} was randomly chosen to replace user {idx}.")
+                        break
+                    else:
+                        available_users.remove(new_idx)
+                        node.tested_users.append(new_idx)
+
+        for node in nodes:
+            # !!! Think an idea: If no node is available, then we need to pass local updates to the next round
+
+            if not node.user_idx is None:
+                idx = node.user_idx
+                local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users[idx])
+                w, loss = local.train(net=copy.deepcopy(net_glob).to(args.device))
+                if args.all_clients:
+                    w_locals[idx] = copy.deepcopy(w)
+                else:
+                    w_locals.append(copy.deepcopy(w))
+                loss_locals.append(copy.deepcopy(loss))
+
+        """   Code below is the old version   
         for idx in idxs_users:
             
-            # Check if user can complete task
-            if not can_complete_task(fluction_computation_capabilities[idx], 
-                                     maximum_computation_capabilities[idx], 
-                                     EPOCH_TIME, UNIFORM_DATASET_SIZE, LAMBDA_I, 
-                                     MU_K):
-            
-                print(f"User {idx} couldn't complete the task due to insufficient capacity.")
+            # Check if the user can complete task
+            can_complete, available_time = can_complete_task(fluction_computation_capabilities[idx], 
+                                        maximum_computation_capabilities[idx], 
+                                        available_time, UNIFORM_DATASET_SIZE, LAMBDA_I, 
+                                        MU_K)
+            print(f"Avaliable time for user {idx} is {available_time} seconds.")
+            if not can_complete:
                 idx_to_remove.append(idx)
+                print(f"User {idx} couldn't complete the task due to insufficient capacity.")
             
         # Assign new user for each unsuccessful users
         for removed_idx in idx_to_remove:
@@ -219,7 +261,7 @@ if __name__ == '__main__':
                     # Here, if the selected user can't complete the task, then we need to continue to select a new user.
                     # So, we need to continue reducing the available time for this user.
                     # Calculate available time for the user.
-                    available_time -= USER_RESELECTION_DELAY
+                                    
                     print(f"User {last_tested_user} couldn't be selected. Available time is now {available_time} seconds.")
                     
                     # !!! Here, user selection is done from the user pool, so there is no need to use the scheduler function
@@ -229,14 +271,14 @@ if __name__ == '__main__':
                     avaliable_users.remove(new_idx)
                     
                     # Check if the new user can complete the task
-                    if can_complete_task(fluction_computation_capabilities[last_tested_user],
-                                            maximum_computation_capabilities[last_tested_user],
-                                            available_time,
-                                            UNIFORM_DATASET_SIZE, LAMBDA_I, MU_K):
+                    can_complete, available_time = can_complete_task(fluction_computation_capabilities[new_idx], 
+                                        maximum_computation_capabilities[new_idx], 
+                                        available_time, UNIFORM_DATASET_SIZE, LAMBDA_I, 
+                                        MU_K)
+                    if can_complete:
                     # Add the newly chosen user to the set of selected users
                         selected_idxs.add(last_tested_user)
                         
-                    
                         # Replace the user who couldn't complete the task (denoted by 'removed_idx') 
                         # with new candidate users
                         idxs_users = [last_tested_user if x == removed_idx else x for x in idxs_users]
@@ -256,39 +298,44 @@ if __name__ == '__main__':
                 w_locals[idx] = copy.deepcopy(w)
             else:
                 w_locals.append(copy.deepcopy(w))
-            loss_locals.append(copy.deepcopy(loss))
+            loss_locals.append(copy.deepcopy(loss)) 
+        """
 
         # update global weights
         # added w_global to parameters
-        w_glob = FedAvg(w_locals, w_glob, compress_ratio, k, args.comp, args.sched, args.blocks)
+        if w_locals:
+            w_glob = FedAvg(w_locals, w_glob, compress_ratio, k, args.comp, args.sched, args.blocks)
 
-        # copy weight to net_glob
-        net_glob.load_state_dict(w_glob)
+        if w_glob:
+            # copy weight to net_glob
+            net_glob.load_state_dict(w_glob)
 
-        # print loss
-        loss_avg = sum(loss_locals) / len(loss_locals)
-        print('Round {:3d}, Average loss {:.3f}'.format(iter, loss_avg))
-        loss_train.append(loss_avg)
+        if net_glob:
+            # Added accurency convergence
+            acc_avg, _ = test_img(net_glob, dataset_test, args)
+            acc.append(acc_avg)
 
-        # Added accurency convergence
-        acc_avg, _ = test_img(net_glob, dataset_test, args)
-        acc.append(acc_avg)
+            if loss_locals:
+                # print loss
+                loss_avg = sum(loss_locals) / len(loss_locals)
+                print('Round {:3d}, Average loss {:.3f}'.format(iter, loss_avg))
+                loss_train.append(loss_avg)
 
-    # plot loss curve
-    plt.figure()
-    plt.plot(range(len(loss_train)), loss_train)
-    plt.ylabel('train_loss')
-    plt.savefig('./save/fed_{}_{}_{}_C{}_iid{}_snr{}_comp{}_scheduling{}.png'.format(args.dataset, args.model, args.epochs, args.frac, args.iid, args.snr, args.comp, args.sched))
+                # plot loss curve
+                plt.figure()
+                plt.plot(range(len(loss_train)), loss_train)
+                plt.ylabel('train_loss')
+                plt.savefig('./save/fed_{}_{}_{}_C{}_iid{}_snr{}_comp{}_scheduling{}.png'.format(args.dataset, args.model, args.epochs, args.frac, args.iid, args.snr, args.comp, args.sched))
 
-    # save result
-    np.save('./save/loss_fed_{}_{}_{}_C{}_iid{}_snr{}_comp{}_scheduling{}.npy'.format(args.dataset, args.model, args.epochs, args.frac, args.iid, args.snr, args.comp, args.sched), loss_train)
-    np.save('./save/acc_fed_{}_{}_{}_C{}_iid{}_snr{}_comp{}_scheduling{}.npy'.format(args.dataset, args.model, args.epochs, args.frac, args.iid, args.snr, args.comp, args.sched), acc)
-    if args.sched != 'BN2':
-        np.save('./save/ni_fed_{}_{}_{}_C{}_iid{}_snr{}_comp{}_scheduling{}.npy'.format(args.dataset, args.model, args.epochs, args.frac, args.iid, args.snr, args.comp, args.sched), selectedUsers)
+                # save result
+                np.save('./save/loss_fed_{}_{}_{}_C{}_iid{}_snr{}_comp{}_scheduling{}.npy'.format(args.dataset, args.model, args.epochs, args.frac, args.iid, args.snr, args.comp, args.sched), loss_train)
+                np.save('./save/acc_fed_{}_{}_{}_C{}_iid{}_snr{}_comp{}_scheduling{}.npy'.format(args.dataset, args.model, args.epochs, args.frac, args.iid, args.snr, args.comp, args.sched), acc)
+                if args.sched != 'BN2':
+                    np.save('./save/ni_fed_{}_{}_{}_C{}_iid{}_snr{}_comp{}_scheduling{}.npy'.format(args.dataset, args.model, args.epochs, args.frac, args.iid, args.snr, args.comp, args.sched), selectedUsers)
 
-    # testing
-    net_glob.eval()
-    acc_train, loss_train = test_img(net_glob, dataset_train, args)
-    acc_test, loss_test = test_img(net_glob, dataset_test, args)
-    print("Training accuracy: {:.2f}".format(acc_train))
-    print("Testing accuracy: {:.2f}".format(acc_test))
+                # testing
+                net_glob.eval()
+                acc_train, loss_train = test_img(net_glob, dataset_train, args)
+                acc_test, loss_test = test_img(net_glob, dataset_test, args)
+                print("Training accuracy: {:.2f}".format(acc_train))
+                print("Testing accuracy: {:.2f}".format(acc_test))

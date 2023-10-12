@@ -4,7 +4,7 @@ from utils.custom_utils import generate_interruption_latency
 
 lambda_i = 0.002
 deadline_constraint = 600
-MU_K = 5
+MU_K = 300
 
 all_durations = []
 all_intervals = []

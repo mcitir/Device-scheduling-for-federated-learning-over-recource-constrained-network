@@ -5,6 +5,16 @@ import matplotlib
 matplotlib.use('Qt5Agg')
 import matplotlib.pyplot as plt
 
+def select_user(available_users, available_time, fluction_computation_capabilities, maximum_computation_capabilities):
+    '''
+     
+     The user selection model may change in the future. For now, it is a random selection.
+
+    '''
+    
+    return np.random.choice(list(available_users))
+
+
 def can_complete_task(fluction_computation_capability, maximum_computation_capability, deadline_constraint, datasize, LAMBDA_I, MU_K):
     """
     Parameters:
@@ -18,6 +28,7 @@ def can_complete_task(fluction_computation_capability, maximum_computation_capab
     Returns:
     -   bool: True if the task can be completed within the deadline, False otherwise
     """
+    available_time = deadline_constraint
 
     # calculate t_cp via generate_computation_latency()
     u_cp, t_cp = generate_computation_latency(fluction_computation_capability, 
@@ -32,19 +43,22 @@ def can_complete_task(fluction_computation_capability, maximum_computation_capab
                                                                                                                     MU_K)
 
     print("is_interruption: ", is_interruption)
-    print("num_interruption: ", num_interruption)
-    print ("interruption_duration: ", interruption_duration)
-    print ("interruption_interval: ", interruption_interval)
+
     
     # Merging computation latency and interruption latency
-    if is_interruption:
-        total_latency = calculate_total_latency(t_cp, num_interruption, interruption_duration, interruption_interval, deadline_constraint)
-    else:
-        total_latency = t_cp    
+    # if is_interruption:
+    #     total_latency, available_time, latency_info = get_latency_metrics(t_cp, num_interruption, interruption_duration, interruption_interval, deadline_constraint)
+    # else:
+    #     total_latency = t_cp
+    
+    
+    total_latency, available_time, latency_info = get_latency_metrics(t_cp, num_interruption, interruption_duration, interruption_interval, deadline_constraint)
 
     # If the total latency is less than the deadline constraint, then the task can be completed within the deadline
-    if total_latency <= deadline_constraint:
-        return True
+    if total_latency <= deadline_constraint:        
+        return True, available_time, latency_info
+    else:
+        return False, available_time, latency_info
 
 
 ##############################################################################################################
@@ -91,7 +105,7 @@ def generate_interruption_latency(lambda_i,deadline_constraint, MU_K):
         return True, num_interruption, interruption_duration, interruption_interval
     else:
         print("No interruption")
-        return False, 0.0, 0.0, 0.0
+        return False, int(0), 0.0, 0.0, 
     
 ##############################################################################################################
 ### communication latency
@@ -101,77 +115,198 @@ def generate_interruption_latency(lambda_i,deadline_constraint, MU_K):
 ##############################################################################################################
 ### Total latency
 
-# def calculate_total_latency(t_cp, num_interruption, interruption_duration, interruption_interval):
-#     total_latency = 0
-    
-#     # Time before the first interruption
-#     if num_interruption > 0:
-#         total_latency += interruption_interval[0]
-#         remaining_time = t_cp - interruption_interval[0]  # kesintiden sonra kalan süre
-    
-#     else:
-#         remaining_time = t_cp
+def get_latency_metrics(t_cp, num_interruption, interruption_duration, interruption_interval, deadline_constraint):
 
-#     for i in range(num_interruption):
-#         # Adding the duration of the interruption
-#         total_latency += interruption_duration[i]
-        
-#         # If there is another interruption, add the interval between the two interruptions
-#         if i < num_interruption - 1:
-#             interval = min(remaining_time, interruption_interval[i+1])  # interval between two interruptions or remaining time (whichever is shorter)
-#             total_latency += interval
-#             remaining_time -= interval
-        
-#         # If there is no interruption after this one, add the remaining time
-#         else:
-#             total_latency += remaining_time
-            
-#     return total_latency
+    latency_info = compute_latency_info(t_cp, num_interruption, interruption_duration, interruption_interval, deadline_constraint)
 
-def calculate_total_latency(t_cp, num_interruption, interruption_duration, interruption_interval, deadline_constraint):
-    total_latency = 0
-    remaining_time = t_cp
+    total_latency = sum(latency_info['computation_segments']) + sum(latency_info['interruption_segments'])
+    available_time = get_available_time(latency_info, total_latency, deadline_constraint)
 
-    bars = []
-    colors = []
-    
-    for i in range(num_interruption):
-        # Time until the next interruption
-        next_interval = interruption_interval[i] if i < len(interruption_interval) else remaining_time
-        #added_duration = min(next_interval + interruption_duration[i], remaining_time)
-        added_duration = min(next_interval, remaining_time)
-
-        bars.append(added_duration)
-        colors.append('blue')
-
-        total_latency += added_duration
-        remaining_time -= added_duration
-        
-        if remaining_time <= 0:
-            break
-
-        bars.append(interruption_duration[i])
-        colors.append('red')
-
-        total_latency += interruption_duration[i]
-        #remaining_time -= interruption_duration[i]
-
-        # if remaining_time <= 0:
-        #     break
-
-        # if remaining_time <= 0:
-        #     return total_latency
-    if remaining_time > 0:
-        bars.append(remaining_time)
-        colors.append('blue')
-        total_latency += remaining_time  # add any remaining computation time if interruptions have been taken care of
-    
+    bars, colors = generate_bars_and_colors(latency_info)
     visualize_latency(bars, colors, deadline_constraint)
 
-    return total_latency
+    
+    # for i in range(num_interruption):
+    #     # Time until the next interruption
+    #     next_interval = interruption_interval[i] if i < len(interruption_interval) else remaining_time
+    #     added_duration = min(next_interval, remaining_time)
+
+    #     bars.append(added_duration)
+    #     colors.append('blue')
+
+    #     total_latency += added_duration
+    #     remaining_time -= added_duration
+        
+    #     if remaining_time <= 0:
+    #         break
+
+    #     bars.append(interruption_duration[i])
+    #     colors.append('red')
+
+    #     total_latency += interruption_duration[i]
+
+    # if remaining_time > 0:
+    #     bars.append(remaining_time)
+    #     colors.append('blue')
+    #     total_latency += remaining_time  # add any remaining computation time if interruptions have been taken care of
+    
+    
+
+    return total_latency, available_time, latency_info
+
+# def compute_latency_info(t_cp, num_interruption, interruption_duration, interruption_interval, deadline_constraint):
+#     elapsed_time = 0
+#     remaining_computation = t_cp
+#     available_time = deadline_constraint
+
+#     latency_info = {
+#         "computation_segments": [],  # Computation durations until next interruption or end
+#         "interruption_segments": [],  # Each interruption duration
+#         "available_times_post_interruption": []  # Available time after each interruption
+#     }
+
+#     for i in range(num_interruption):
+#         # Time until the next interruption
+#         next_interval = interruption_interval[i] if i < len(interruption_interval) else remaining_computation
+#         computation_duration = min(next_interval, remaining_computation)
+
+#         elapsed_time += computation_duration
+#         remaining_computation -= computation_duration
+#         available_time -= computation_duration
+
+#         latency_info["computation_segments"].append(computation_duration)
+
+#         if remaining_computation <= 0:
+#             break
+
+#         # Apply interruption
+#         interrupt_duration = interruption_duration[i]
+#         elapsed_time += interrupt_duration
+#         available_time -= interrupt_duration
+
+#         latency_info["interruption_segments"].append(interrupt_duration)
+#         latency_info["available_times_post_interruption"].append(available_time)
+
+#     # If there's any computation left
+#     if remaining_computation > 0:
+#         latency_info["computation_segments"].append(remaining_computation)
+
+#     return latency_info
+
+
+def compute_latency_info(t_cp, num_interruption, interruption_duration, interruption_interval, deadline_constraint):
+    elapsed_time = 0
+    remaining_computation = t_cp
+    available_time = deadline_constraint
+
+    latency_info = {
+        "computation_segments": [],
+        "interruption_segments": [],
+        "available_times_post_interruption": [],
+        "completion_possible": []
+    }
+
+    for i in range(num_interruption):
+        # Time until the next interruption
+        next_interval = interruption_interval[i] if i < len(interruption_interval) else remaining_computation
+        computation_duration = min(next_interval, remaining_computation)
+
+        elapsed_time += computation_duration
+        remaining_computation -= computation_duration
+        available_time -= computation_duration
+
+        latency_info["computation_segments"].append(computation_duration)
+
+        if remaining_computation <= 0:
+            break
+
+        # Apply interruption
+        interrupt_duration = interruption_duration[i]
+        elapsed_time += interrupt_duration
+        available_time -= interrupt_duration
+
+        latency_info["interruption_segments"].append(interrupt_duration)
+        latency_info["available_times_post_interruption"].append(available_time)
+        
+        # Check if completion is possible post interruption
+        if remaining_computation <= available_time:
+            latency_info["completion_possible"].append(True)
+        else:
+            latency_info["completion_possible"].append(False)
+
+    # If there's any computation left after all interruptions
+    if remaining_computation > 0:
+        latency_info["computation_segments"].append(remaining_computation)
+        # Last check for completion possibility
+        if remaining_computation <= available_time:
+            latency_info["completion_possible"].append(True)
+        else:
+            latency_info["completion_possible"].append(False)
+
+    return latency_info
+
+def get_available_time(latency_info, total_latency, deadline_constraint):
+    available_times = latency_info.get("available_times_post_interruption", [])
+
+    # Check if the list is empty
+    if not available_times:
+        if total_latency < deadline_constraint:
+            return 0
+        return deadline_constraint
+    
+    # If all values in available_times_post_interruption are positive, then the last value is the available time
+    if all(value > 0 for value in available_times):
+        return available_times[-1]
+    
+    # If there is at least one negative value, then the last positive value is the available time
+    for value in reversed(available_times):
+        if value > 0:
+            return value
+        
+    # If there is no positive value, then the available time is 0
+    return 0
+
+    # # If all values in available_times_post_interruption are positive, then the last value is the available time
+    # if all(value > 0 for value in latency_info["available_times_post_interruption"]):
+    #     return latency_info["available_times_post_interruption"][-1]
+
+    # # If there is at least one negative value, then the last positive value is the available time
+    # for value in reversed(latency_info["available_times_post_interruption"]):
+    #     if value > 0:
+    #         return value
+        
+    # # If there is no positive value, then the available time is 0
+    # if all(value <= 0 for value in latency_info["available_times_post_interruption"]):
+    #     return 0
+    
+    # # If latency_info["available_times_post_interruption"] is empty 
+    # # but total_latency is less than deadline_constraint, then the available time is 0
+    # if total_latency < deadline_constraint and latency_info["available_times_post_interruption"] is None:
+    #     return 0
+    
+    # # If latency_info["available_times_post_interruption"] is empty and total_latency is greater than deadline_constraint,
+    # # then user is not capable to start the task, so time was reserved as deadline_constraint
+    # if total_latency >= deadline_constraint and latency_info["available_times_post_interruption"] is None:
+    #     return deadline_constraint
 
 
 ##############################################################################################################
+
+def generate_bars_and_colors(latency_info):
+    bars = []
+    colors = []
+
+    for comp, inter in zip(latency_info["computation_segments"], latency_info["interruption_segments"]):
+        bars.extend([comp, inter])
+        colors.extend(['blue', 'red'])
+
+    # If computation segments are more than interruption segments, add the remaining computation segments
+    if len(latency_info["computation_segments"]) > len(latency_info["interruption_segments"]):
+        bars.extend(latency_info["computation_segments"][len(latency_info["interruption_segments"]):])
+        colors.extend(['blue'] * (len(latency_info["computation_segments"]) - len(latency_info["interruption_segments"])))
+
+    return bars, colors
+
 
 def visualize_latency(bars, colors, deadline_constraint):
     
@@ -282,3 +417,32 @@ def  apply_preemption(users, probability, max_preemption_time=60):
     #     # A log record will be created when this exception is raised
     #     raise ValueError("Error in probability calculation")
     ##################################################
+
+
+
+    # def calculate_total_latency(t_cp, num_interruption, interruption_duration, interruption_interval):
+#     total_latency = 0
+    
+#     # Time before the first interruption
+#     if num_interruption > 0:
+#         total_latency += interruption_interval[0]
+#         remaining_time = t_cp - interruption_interval[0]  # kesintiden sonra kalan süre
+    
+#     else:
+#         remaining_time = t_cp
+
+#     for i in range(num_interruption):
+#         # Adding the duration of the interruption
+#         total_latency += interruption_duration[i]
+        
+#         # If there is another interruption, add the interval between the two interruptions
+#         if i < num_interruption - 1:
+#             interval = min(remaining_time, interruption_interval[i+1])  # interval between two interruptions or remaining time (whichever is shorter)
+#             total_latency += interval
+#             remaining_time -= interval
+        
+#         # If there is no interruption after this one, add the remaining time
+#         else:
+#             total_latency += remaining_time
+            
+#     return total_latency

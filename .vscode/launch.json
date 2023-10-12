@@ -22,7 +22,8 @@
                 "--frac", "0.2",
                 "--num_users", "10",
                 "--concept", "dynamic",
-            ]
+            ],
+            "python": "/home/sms_admin/anaconda3/envs/myenv/bin/python"
         }
     ]
 }
